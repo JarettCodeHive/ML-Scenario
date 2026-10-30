@@ -1,13 +1,13 @@
-# Cisco EA Cluster C ML Scenario
+#  EA Cluster C ML Scenario
 
-A standalone local proof of concept aligned to the Cisco EA Lever Modelling Scope v4:
+A standalone local proof of concept aligned to the  EA Lever Modelling Scope v4:
 
 > **Cluster:** C — Term and Renewal  
 > **What-if scenario:** Flexible 1- or 5-year terms against 3-year  
 > **Core question:** Does term flexibility grow commitments or destabilise revenue?  
 > **PPT register:** Wave 1 · Scenario 8 · Type 1
 
-The project contains only this scenario: synthetic Cisco-shaped data, quality checks, point-in-time feature preparation, local CatBoost training, deterministic portfolio calculations, and a one-page Streamlit decision view.
+The project contains only this scenario: synthetic -shaped data, quality checks, point-in-time feature preparation, local CatBoost training, deterministic portfolio calculations, and a one-page Streamlit decision view.
 
 ## PPT alignment
 
@@ -34,7 +34,7 @@ The supplied CSV does not contain renewal, churn, acceptance, invoice, or operat
 - Plotly
 - pytest
 
-Everything runs locally. No Cisco credentials, Snowflake connection, LLM, or cloud model API is used.
+Everything runs locally. No credentials, Snowflake connection, LLM, or cloud model API is used.
 
 ## First run with included sample data and model
 
@@ -55,10 +55,10 @@ source .venv/bin/activate
 PYTHONPATH=src pytest -q
 ```
 
-## Replace the sample with Cisco data
+## Replace the sample with data
 
 1. Read [DATA_CONTRACT.md](DATA_CONTRACT.md).
-2. Rename the approved Cisco export to `term_deals.csv` and place it at `data/input/term_deals.csv`.
+2. Rename the approved export to `term_deals.csv` and place it at `data/input/term_deals.csv`.
 3. Set a traceable dataset version.
 4. Prepare, train, test, and launch.
 
@@ -68,31 +68,31 @@ The input filename is fixed. It must remain:
 data/input/term_deals.csv
 ```
 
-For example, if Cisco sends `term_deals_cisco.csv`, copy or rename it as follows:
+For example, if sends `term_deals.csv`, copy or rename it as follows:
 
 ```bash
-cp /path/to/term_deals_cisco.csv data/input/term_deals.csv
+cp /path/to/term_deals.csv data/input/term_deals.csv
 ```
 
 `SOURCE_DATASET_VERSION` is not the filename. It is the audit label identifying the exact delivery used to prepare features and train the model. A recommended format is:
 
 ```text
-cisco-cluster-c-YYYYMMDD-vN
+-cluster-c-YYYYMMDD-vN
 ```
 
 For example:
 
 ```bash
-export SOURCE_DATASET_VERSION="cisco-cluster-c-20261030-v1"
+export SOURCE_DATASET_VERSION="-cluster-c-20261030-v1"
 ```
 
-If Cisco provides a corrected extract on the same date, keep the filename as `term_deals.csv` and change only the version label to `v2`.
+If provides a corrected extract on the same date, keep the filename as `term_deals.csv` and change only the version label to `v2`.
 
 Run the complete workflow:
 
 ```bash
 source .venv/bin/activate
-export SOURCE_DATASET_VERSION="cisco-cluster-c-20261030-v1"
+export SOURCE_DATASET_VERSION="-cluster-c-20261030-v1"
 
 PYTHONPATH=src python scripts/prepare_data.py
 PYTHONPATH=src python scripts/train_model.py
@@ -161,7 +161,7 @@ The UI compares coverage volatility and renewal-decision points over five years.
 └── tests/
 ```
 
-## Cisco handoff checklist
+##  handoff checklist
 
 - Confirm the exact Snowflake column spelling and subscription grain.
 - Confirm whether bookings are total term commitment or another accounting measure.
@@ -169,6 +169,6 @@ The UI compares coverage volatility and renewal-decision points over five years.
 - Review missing-value rates and term overlap before training.
 - Review test performance separately for 1-, 3-, and 5-year terms.
 - Add the additional renewal and operational fields listed in the data contract.
-- Replace straight-line stability proxies with Cisco-approved bookings, revenue, invoice, and cash-flow rules.
+- Replace straight-line stability proxies with -approved bookings, revenue, invoice, and cash-flow rules.
 - Surface the read-only Snowflake query in the UI when CSV input is replaced, matching the PPT traceability requirement.
-- Apply Cisco security, access, retention, and model-governance controls before using production data.
+- Apply  security, access, retention, and model-governance controls before using production data.
