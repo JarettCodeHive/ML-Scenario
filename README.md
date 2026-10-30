@@ -1,6 +1,6 @@
 #  EA Cluster C ML Scenario
 
-A standalone local proof of concept aligned to the  EA Lever Modelling Scope v4:
+A standalone local proof of concept aligned to the EA Lever Modelling Scope v4:
 
 > **Cluster:** C — Term and Renewal  
 > **What-if scenario:** Flexible 1- or 5-year terms against 3-year  
@@ -171,4 +171,4 @@ The UI compares coverage volatility and renewal-decision points over five years.
 - Add the additional renewal and operational fields listed in the data contract.
 - Replace straight-line stability proxies with -approved bookings, revenue, invoice, and cash-flow rules.
 - Surface the read-only Snowflake query in the UI when CSV input is replaced, matching the PPT traceability requirement.
-- Apply  security, access, retention, and model-governance controls before using production data.
+- Apply security, access, retention, and model-governance controls before using production data.

@@ -47,19 +47,19 @@ def load_scored() -> tuple[pd.DataFrame, dict, pd.DataFrame]:
     return frame, metadata, metrics
 
 
-st.title("Cisco EA — Cluster C ML Scenario")
+st.title("Cisco EA — ML Scenario")
 st.markdown(
     """
 **What-if scenario:** Flexible 1- or 5-year terms against 3-year  
 **Core question:** Does term flexibility grow commitments or destabilise revenue?  
-**PPT classification:** Cluster C · Term and Renewal · Wave 1 · Scenario 8 · Type 1
+**Classification:** Term and Renewal
 """
 )
-st.warning(
-    "Synthetic POC. CatBoost estimates bookings associations under each term option; it does not prove "
-    "that changing term causes the outcome. Revenue coverage is a straight-line contracted-value proxy, "
-    "not GAAP revenue recognition, cash flow, or Cisco-approved accounting logic."
-)
+# st.warning(
+#     "Synthetic POC. CatBoost estimates bookings associations under each term option; it does not prove "
+#     "that changing term causes the outcome. Revenue coverage is a straight-line contracted-value proxy, "
+#     "not GAAP revenue recognition, cash flow, or Cisco-approved accounting logic."
+# )
 
 try:
     scored, metadata, model_metrics = load_scored()
@@ -102,7 +102,7 @@ m2.metric("Commitment change", money(summary["commitment_change"]))
 m3.metric("NPV change", money(summary["npv_change"]), help="Straight-line contracted-value proxy discounted at the selected rate")
 m4.metric("Average expected term", f"{summary['average_term_years']:.2f} years", delta=f"{summary['average_term_years'] - 3:+.2f} vs baseline", delta_color="off")
 
-st.subheader("Outcome on the three PPT decision lenses")
+st.subheader("Outcome on the three decision lenses")
 g, v, s = st.columns(3)
 with g.container(border=True):
     st.markdown("#### 1. Growth")
