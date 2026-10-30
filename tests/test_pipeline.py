@@ -27,3 +27,28 @@ def test_preparation_passes_and_prior_history_does_not_use_current_target() -> N
     rebuilt_row = rebuilt[rebuilt.SUBSCRIPTION_REFERENCE_ID == target_id].iloc[0]
     assert baseline_row.CUSTOMER_PRIOR_AVG_BOOKINGS == rebuilt_row.CUSTOMER_PRIOR_AVG_BOOKINGS
     assert (prepare(raw).checks.status == "PASS").all()
+
+
+def test_row_level_contract_failures_are_non_blocking() -> None:
+    raw = generate_term_deals(seed=42, row_count=30)
+    raw.loc[0, ["TERM_BUCKET", "TERM_START_DATE", "BOOKINGS_NET_PRICE_USD_AMT"]] = np.nan
+
+    result = prepare(raw)
+
+    assert len(result.frame) == len(raw)
+    assert pd.isna(result.frame.loc[result.frame["SUBSCRIPTION_REFERENCE_ID"] == raw.loc[0, "SUBSCRIPTION_REFERENCE_ID"], "TERM_YEARS"]).all()
+    assert "critical_values_present" in set(result.checks.loc[result.checks.status == "FAIL", "check_id"])
+
+
+def test_common_term_bucket_aliases_are_normalized() -> None:
+    raw = generate_term_deals(seed=42, row_count=6)
+    raw["TERM_BUCKET"] = ["12 Months", "36_months", "60-MONTHS", "1Y", 3, "5 years"]
+    expected = dict(zip(
+        raw["SUBSCRIPTION_REFERENCE_ID"],
+        ["1 Year", "3 Year", "5 Year", "1 Year", "3 Year", "5 Year"],
+    ))
+
+    result = prepare(raw)
+
+    actual = dict(zip(result.frame["SUBSCRIPTION_REFERENCE_ID"], result.frame["TERM_BUCKET"]))
+    assert actual == expected

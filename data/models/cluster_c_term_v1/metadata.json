@@ -1,8 +1,8 @@
 {
   "model_version": "cluster-c-term-catboost-v1",
-  "trained_at_utc": "2026-10-30T06:10:40.268412+00:00",
-  "source_dataset_version": "cisco-cluster-c-20261030-v1",
-  "dataset_sha256": "e42b1885f3ba52c30a602a247b5ae87b13d2fa410135f4de253e167e7b15457d",
+  "trained_at_utc": "2026-10-30T14:46:46.549400+00:00",
+  "source_dataset_version": "cluster-c-synthetic-v1-seed42",
+  "dataset_sha256": "38e1dda7f70e136904e9d8afdebfdab2ec054f8de2e8a6fe152944e88f778b0a",
   "target": "BOOKINGS_NET_PRICE_USD_AMT",
   "model_type": "CatBoost S-learner with TERM_BUCKET as treatment feature",
   "catboost_version": "1.2.10",

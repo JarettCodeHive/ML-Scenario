@@ -102,7 +102,7 @@ streamlit run app.py
 
 The filename remains constant for every delivery. The dataset-version label changes for each new or corrected delivery and is stored in the prepared data and model metadata for traceability.
 
-Preparation fails if critical keys, dates, term values, or financial targets are invalid. Training also fails unless historical 1-, 3-, and 5-year examples exist in every chronological split.
+Preparation currently records invalid critical keys, dates, term values, and financial targets as non-blocking warnings in `data/prepared/quality_checks.csv`. A missing required column still stops preparation. Training also fails unless historical 1-, 3-, and 5-year examples exist in every chronological split.
 
 ## Optional: regenerate deterministic sample data
 

@@ -26,7 +26,7 @@ The column names below reproduce the supplied Cisco schema image. If the Snowfla
 | `BUSINESS_ENTITY_DESCR` | string | No | Categorical model feature |
 | `SUB_BUSINESS_ENTITY_DESCR` | string | No | Categorical model feature |
 
-The screenshot marked columns nullable. The preparation layer blocks missing critical fields and lets CatBoost handle missing optional numeric values or map optional categorical values to `Unknown`.
+The screenshot marked columns nullable. For the current exploratory workflow, the preparation layer reports missing critical fields in `data/prepared/quality_checks.csv` without stopping preparation. Missing required columns remain blocking. CatBoost handles missing optional numeric values and maps optional categorical values to `Unknown`.
 
 ## Grain
 
@@ -41,6 +41,8 @@ Normalize Cisco values before preparation. Examples:
 36 months, 3Y, THREE_YEAR -> 3 Year
 60 months, 5Y, FIVE_YEAR -> 5 Year
 ```
+
+The preparation step performs these common mappings automatically. Unrecognized non-null labels remain visible in the quality-check report.
 
 `TERM_END_DATE - TERM_START_DATE` must agree with `TERM_BUCKET` within five days, allowing leap years.
 

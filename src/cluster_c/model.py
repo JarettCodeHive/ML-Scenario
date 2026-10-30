@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -18,6 +20,7 @@ from .config import MODEL_DIR, RANDOM_SEED, SOURCE_DATASET_VERSION
 from .preparation import CATEGORICAL_FEATURES, FEATURES, TARGET
 
 MODEL_VERSION = "cluster-c-term-catboost-v1"
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -52,6 +55,7 @@ def matrix(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
+    LOGGER.info("Creating chronological train/validation/test split")
     data = frame.copy()
     data["TERM_START_DATE"] = pd.to_datetime(data["TERM_START_DATE"])
     dates = np.array(sorted(data["TERM_START_DATE"].dropna().unique()))
@@ -64,12 +68,22 @@ def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
         "validation": data[(data.TERM_START_DATE > train_cutoff) & (data.TERM_START_DATE <= validation_cutoff)].copy(),
         "test": data[data.TERM_START_DATE > validation_cutoff].copy(),
     }
+    LOGGER.info(
+        "Split cutoffs: train through %s; validation through %s",
+        train_cutoff.date(),
+        validation_cutoff.date(),
+    )
+    LOGGER.info("Split row counts: %s", {name: len(part) for name, part in splits.items()})
     if any(part.empty for part in splits.values()):
         raise ValueError(f"Chronological split produced an empty period: { {k: len(v) for k, v in splits.items()} }")
     for name, part in splits.items():
         missing_terms = {"1 Year", "3 Year", "5 Year"} - set(part["TERM_BUCKET"])
         if missing_terms:
-            raise ValueError(f"{name} split lacks term overlap for {sorted(missing_terms)}")
+            observed_terms = sorted(part["TERM_BUCKET"].dropna().astype(str).unique().tolist())
+            raise ValueError(
+                f"{name} split lacks term overlap for {sorted(missing_terms)}; "
+                f"observed TERM_BUCKET values: {observed_terms}"
+            )
     return splits
 
 
@@ -105,14 +119,31 @@ def _fit(model, train_pool, validation_pool, config):
 
 
 def train_models(frame: pd.DataFrame, dataset_sha256: str | None = None, config: TrainingConfig = TrainingConfig()) -> TrainingResult:
+    LOGGER.info(
+        "Starting model training with %s rows, %d features, and seed %d",
+        f"{len(frame):,}",
+        len(FEATURES),
+        config.random_seed,
+    )
     splits = chronological_split(frame)
+    LOGGER.info("Building CatBoost pools")
     pools = {
         name: Pool(matrix(part), label=part[TARGET].astype(float), cat_features=CATEGORICAL_FEATURES, feature_names=FEATURES)
         for name, part in splits.items()
     }
+    model_started = time.perf_counter()
+    LOGGER.info("Training point model (MAE)")
     point = _fit(_new_model(config, "MAE"), pools["train"], pools["validation"], config)
+    LOGGER.info("Point model finished at iteration %d", point.get_best_iteration())
+
+    LOGGER.info("Training lower-bound model (P10)")
     lower = _fit(_new_model(config, "Quantile:alpha=0.1"), pools["train"], pools["validation"], config)
+    LOGGER.info("Lower-bound model finished at iteration %d", lower.get_best_iteration())
+
+    LOGGER.info("Training upper-bound model (P90)")
     upper = _fit(_new_model(config, "Quantile:alpha=0.9"), pools["train"], pools["validation"], config)
+    LOGGER.info("Upper-bound model finished at iteration %d", upper.get_best_iteration())
+    LOGGER.info("All model fits completed in %.2f seconds", time.perf_counter() - model_started)
 
     train = splits["train"]
     term_suite_medians = train.groupby(["TERM_BUCKET", "SUITE_NAME"])[TARGET].median()
@@ -120,6 +151,7 @@ def train_models(frame: pd.DataFrame, dataset_sha256: str | None = None, config:
     metric_rows = []
     prediction_rows = []
     for split_name in ("validation", "test"):
+        LOGGER.info("Evaluating %s split", split_name)
         part = splits[split_name]
         actual = part[TARGET].to_numpy(float)
         central = np.clip(point.predict(matrix(part)), 0, None)
@@ -181,6 +213,7 @@ def train_models(frame: pd.DataFrame, dataset_sha256: str | None = None, config:
 
 
 def save_result(result: TrainingResult, output_dir: Path = MODEL_DIR) -> dict[str, Path]:
+    LOGGER.info("Writing model artifacts to %s", output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     paths = {
         "point": output_dir / "bookings_point.cbm", "lower": output_dir / "bookings_lower_10.cbm", "upper": output_dir / "bookings_upper_90.cbm",

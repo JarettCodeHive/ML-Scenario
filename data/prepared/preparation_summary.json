@@ -1,5 +1,5 @@
 {
-  "source_dataset_version": "cisco-cluster-c-20261030-v1",
+  "source_dataset_version": "cluster-c-synthetic-v1-seed42",
   "grain": "One row per subscription reference",
   "target": "BOOKINGS_NET_PRICE_USD_AMT",
   "row_count": 5000,
