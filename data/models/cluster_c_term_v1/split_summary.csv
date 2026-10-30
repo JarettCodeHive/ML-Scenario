@@ -1,0 +1,4 @@
+split,rows,customers,start_date_min,start_date_max,one_year_rows,three_year_rows,five_year_rows
+train,3439,692,2020-01-01,2024-03-17,801,1948,690
+validation,771,474,2024-03-20,2025-02-05,182,432,157
+test,790,472,2025-02-06,2025-12-29,196,448,146

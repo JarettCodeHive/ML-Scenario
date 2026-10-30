@@ -1,0 +1,10 @@
+check_id,status,failure_count,description
+required_columns,PASS,0,Required columns must exist; missing=[]
+subscription_id_present_unique,PASS,0,Subscription reference must be present and unique
+critical_values_present,PASS,0,"Critical identifiers, term fields, dates, and bookings must be populated"
+valid_dates,PASS,0,Term dates must parse and end after start
+known_term_bucket,PASS,0,"Term bucket must be 1 Year, 3 Year or 5 Year"
+nonnegative_financials,PASS,0,Financial outcomes must be non-negative
+fiscal_quarter_range,PASS,0,Fiscal quarter must be 1-4
+fiscal_period_range,PASS,0,Fiscal period must be 1-12
+term_date_consistency,PASS,0,Term dates must agree with term bucket within five days

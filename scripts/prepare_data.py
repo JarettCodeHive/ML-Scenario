@@ -1,0 +1,13 @@
+import pandas as pd
+
+from cluster_c.config import INPUT_PATH
+from cluster_c.preparation import prepare, save_prepared
+
+if __name__ == "__main__":
+    raw = pd.read_csv(INPUT_PATH)
+    result = prepare(raw)
+    paths = save_prepared(result)
+    print(f"Quality checks: {result.summary['quality_checks_passed']}/{result.summary['quality_checks_total']} passed")
+    print(f"Prepared rows: {len(result.frame):,}")
+    for name, path in paths.items():
+        print(f"{name}: {path}")

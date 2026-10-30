@@ -1,0 +1,11 @@
+{
+  "source_dataset_version": "cisco-cluster-c-20261030-v1",
+  "grain": "One row per subscription reference",
+  "target": "BOOKINGS_NET_PRICE_USD_AMT",
+  "row_count": 5000,
+  "customer_count": 699,
+  "start_date_min": "2020-01-01",
+  "start_date_max": "2025-12-29",
+  "quality_checks_passed": 9,
+  "quality_checks_total": 9
+}
