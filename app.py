@@ -41,7 +41,11 @@ def load_scored() -> tuple[pd.DataFrame, dict, pd.DataFrame]:
         raise FileNotFoundError("Missing artifacts: " + ", ".join(missing))
     frame = pd.read_csv(feature_path, parse_dates=["TERM_START_DATE", "TERM_END_DATE"])
     predictions = predict_term_options(frame, model_dir)
-    frame = frame.merge(predictions, on="SUBSCRIPTION_REFERENCE_ID", validate="one_to_one")
+    # Predictions are returned in the same row order as the feature frame.
+    # Position-based attachment keeps diagnostic rows with duplicate or null
+    # subscription IDs usable without creating a many-to-many merge.
+    prediction_values = predictions.drop(columns="SUBSCRIPTION_REFERENCE_ID").reset_index(drop=True)
+    frame = pd.concat([frame.reset_index(drop=True), prediction_values], axis=1)
     metadata = json.loads((model_dir / "metadata.json").read_text(encoding="utf-8"))
     metrics = pd.read_csv(model_dir / "metrics.csv")
     return frame, metadata, metrics
@@ -153,7 +157,7 @@ with st.expander("Model performance, overlap, and limitations"):
         f"""
 - Test WAPE: **{metadata['test_wape_pct']:.2f}%**.
 - Improvement over the term-and-suite median baseline: **{metadata['relative_wape_improvement_pct']:.2f}%**.
-- Training requires historical examples of 1-, 3-, and 5-year terms in every chronological split.
+- Missing 1-, 3-, or 5-year examples in a chronological split are reported as warnings and make the corresponding per-term metrics unavailable.
 - The model is an observational S-learner. Counterfactual estimates require overlap and do not establish causality.
 - A production decision needs renewal, churn, acceptance, discount, invoice, cancellation, and operational-cost data listed in the PPT plan.
 """

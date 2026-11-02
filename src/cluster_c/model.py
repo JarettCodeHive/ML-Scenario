@@ -57,12 +57,32 @@ def matrix(frame: pd.DataFrame) -> pd.DataFrame:
 def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
     LOGGER.info("Creating chronological train/validation/test split")
     data = frame.copy()
-    data["TERM_START_DATE"] = pd.to_datetime(data["TERM_START_DATE"])
+    data["TERM_START_DATE"] = pd.to_datetime(data["TERM_START_DATE"], errors="coerce")
+    missing_date_rows = int(data["TERM_START_DATE"].isna().sum())
+    if missing_date_rows:
+        LOGGER.warning(
+            "Excluding %s rows with null or unparseable TERM_START_DATE from chronological splits",
+            f"{missing_date_rows:,}",
+        )
     dates = np.array(sorted(data["TERM_START_DATE"].dropna().unique()))
+    if len(dates) < 3:
+        raise ValueError("At least 3 distinct non-null term start dates are required")
     if len(dates) < 12:
-        raise ValueError("At least 12 distinct term start dates are required")
-    train_cutoff = pd.Timestamp(dates[int(len(dates) * 0.70) - 1])
-    validation_cutoff = pd.Timestamp(dates[int(len(dates) * 0.85) - 1])
+        LOGGER.warning(
+            "Only %d distinct term start dates are available; training will continue, "
+            "but validation and test metrics are not statistically reliable",
+            len(dates),
+        )
+
+    # Split on distinct dates and always reserve at least one date for both
+    # validation and test, including for small diagnostic datasets.
+    train_date_count = min(max(1, int(len(dates) * 0.70)), len(dates) - 2)
+    validation_end_count = min(
+        max(train_date_count + 1, int(len(dates) * 0.85)),
+        len(dates) - 1,
+    )
+    train_cutoff = pd.Timestamp(dates[train_date_count - 1])
+    validation_cutoff = pd.Timestamp(dates[validation_end_count - 1])
     splits = {
         "train": data[data.TERM_START_DATE <= train_cutoff].copy(),
         "validation": data[(data.TERM_START_DATE > train_cutoff) & (data.TERM_START_DATE <= validation_cutoff)].copy(),
@@ -80,9 +100,12 @@ def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
         missing_terms = {"1 Year", "3 Year", "5 Year"} - set(part["TERM_BUCKET"])
         if missing_terms:
             observed_terms = sorted(part["TERM_BUCKET"].dropna().astype(str).unique().tolist())
-            raise ValueError(
-                f"{name} split lacks term overlap for {sorted(missing_terms)}; "
-                f"observed TERM_BUCKET values: {observed_terms}"
+            LOGGER.warning(
+                "%s split lacks term overlap for %s; observed TERM_BUCKET values: %s. "
+                "Affected per-term metrics will be unavailable",
+                name,
+                sorted(missing_terms),
+                observed_terms,
             )
     return splits
 
@@ -90,12 +113,16 @@ def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
 def metrics(actual, predicted) -> dict[str, float]:
     actual = np.asarray(actual, dtype=float)
     predicted = np.asarray(predicted, dtype=float)
+    if actual.size == 0:
+        return {"mae": np.nan, "rmse": np.nan, "wape_pct": np.nan, "bias_pct": np.nan}
     error = predicted - actual
+    absolute_total = float(np.abs(actual).sum())
+    signed_total = float(actual.sum())
     return {
         "mae": float(np.abs(error).mean()),
         "rmse": float(np.sqrt(np.square(error).mean())),
-        "wape_pct": float(np.abs(error).sum() / np.abs(actual).sum() * 100),
-        "bias_pct": float(error.sum() / actual.sum() * 100),
+        "wape_pct": float(np.abs(error).sum() / absolute_total * 100) if absolute_total else np.nan,
+        "bias_pct": float(error.sum() / signed_total * 100) if signed_total else np.nan,
     }
 
 
