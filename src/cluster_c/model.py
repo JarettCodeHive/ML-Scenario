@@ -114,6 +114,26 @@ def matrix(frame: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(columns, index=frame.index)[FEATURES]
 
 
+def training_eligible_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    """Exclude rows that CatBoost cannot use as supervised examples."""
+    numeric_target = pd.to_numeric(frame[TARGET], errors="coerce")
+    valid_target = pd.Series(
+        np.isfinite(numeric_target.to_numpy(dtype=float, na_value=np.nan)),
+        index=frame.index,
+    )
+    excluded_rows = int((~valid_target).sum())
+    if excluded_rows:
+        LOGGER.warning(
+            "Excluding %s rows with null, non-numeric, or infinite %s from model training",
+            f"{excluded_rows:,}",
+            TARGET,
+        )
+    eligible = frame.loc[valid_target]
+    if eligible.empty:
+        raise ValueError(f"No rows have a valid finite {TARGET} target")
+    return eligible
+
+
 def chronological_split(frame: pd.DataFrame) -> dict[str, pd.DataFrame]:
     LOGGER.info("Creating chronological train/validation/test split")
     # Parse only the date Series instead of copying the complete input frame.
@@ -301,6 +321,7 @@ def train_models(
         config.learning_rate,
         config.early_stopping_rounds,
     )
+    frame = training_eligible_frame(frame)
     splits = chronological_split(frame)
     source_train_rows = len(splits["train"])
     splits["train"] = representative_training_sample(

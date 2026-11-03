@@ -13,6 +13,7 @@ from cluster_c.model import (
     predict_term_options,
     representative_training_sample,
     save_result,
+    training_eligible_frame,
     train_models,
 )
 from cluster_c.preparation import (
@@ -22,6 +23,7 @@ from cluster_c.preparation import (
     prepare,
 )
 from cluster_c.synthetic import generate_term_deals
+from scripts.train_model import value_counts_for_log
 
 
 def test_multi_quantile_model_scores_all_three_terms(tmp_path) -> None:
@@ -75,6 +77,31 @@ def test_thread_count_is_configurable_from_environment(monkeypatch) -> None:
     monkeypatch.setenv("CATBOOST_THREAD_COUNT", "4")
 
     assert TrainingConfig().thread_count == 4
+
+
+def test_training_log_counts_null_categorical_values_without_adding_category() -> None:
+    terms = pd.Series(
+        pd.Categorical(
+            ["1 Year", None, "3 Year", None, "1 Year"],
+            categories=["1 Year", "3 Year", "5 Year"],
+        )
+    )
+
+    counts = value_counts_for_log(terms)
+
+    assert counts == {"1 Year": 2, "<NULL>": 2, "3 Year": 1}
+    assert "<NULL>" not in terms.cat.categories
+
+
+def test_training_excludes_only_rows_without_a_finite_target() -> None:
+    frame = pd.DataFrame({
+        "BOOKINGS_NET_PRICE_USD_AMT": [100.0, np.nan, np.inf, -25.0],
+        "row_id": [1, 2, 3, 4],
+    })
+
+    eligible = training_eligible_frame(frame)
+
+    assert eligible["row_id"].tolist() == [1, 4]
 
 
 def test_invalid_thread_count_is_rejected(monkeypatch) -> None:
