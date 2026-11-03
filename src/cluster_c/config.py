@@ -5,6 +5,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
 INPUT_PATH = DATA_DIR / "input" / "term_deals.csv"
 PREPARED_DIR = DATA_DIR / "prepared"
+PREPARED_FEATURE_PATH = PREPARED_DIR / "term_model_features.parquet"
 MODEL_DIR = DATA_DIR / "models" / "cluster_c_term_v1"
 RANDOM_SEED = 42
 SOURCE_DATASET_VERSION = os.getenv("SOURCE_DATASET_VERSION", "cluster-c-synthetic-v1-seed42")

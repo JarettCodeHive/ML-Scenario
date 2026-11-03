@@ -3,20 +3,20 @@ import time
 
 import pandas as pd
 
-from cluster_c.config import PREPARED_DIR
-from cluster_c.model import save_result, sha256, train_models
+from cluster_c.config import PREPARED_FEATURE_PATH
+from cluster_c.model import TRAINING_COLUMNS, save_result, sha256, train_models
 
-FEATURE_PATH = PREPARED_DIR / "term_model_features.csv"
+FEATURE_PATH = PREPARED_FEATURE_PATH
 LOGGER = logging.getLogger("train_model")
 
 
 def main() -> None:
     started = time.perf_counter()
     LOGGER.info("Reading prepared features from %s", FEATURE_PATH)
-    frame = pd.read_csv(
+    frame = pd.read_parquet(
         FEATURE_PATH,
-        parse_dates=["TERM_START_DATE", "TERM_END_DATE"],
-        low_memory=False,
+        columns=TRAINING_COLUMNS,
+        engine="pyarrow",
     )
     LOGGER.info("Loaded %s rows and %d columns", f"{len(frame):,}", len(frame.columns))
     valid_start_dates = frame["TERM_START_DATE"].dropna()

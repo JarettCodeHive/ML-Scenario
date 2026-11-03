@@ -102,6 +102,22 @@ streamlit run app.py
 
 The filename remains constant for every delivery. The dataset-version label changes for each new or corrected delivery and is stored in the prepared data and model metadata for traceability.
 
+Preparation writes model features to `data/prepared/term_model_features.parquet` using Snappy compression. The source input remains CSV, while quality checks and source profiles remain CSV for direct review.
+
+Prepared fiscal, term, and history-count fields use compact nullable integer types; categorical model fields use dictionary encoding; and derived history averages use `float32`. Raw bookings and annualized financial amounts remain `float64`. CatBoost numeric matrices and labels use `float32` to reduce Pool memory.
+
+By default, training uses the complete chronological training split. To reduce runtime or memory for development, set an optional deterministic sampling cap. Sampling preserves fiscal-year, term, segment, and suite representation; validation and test splits remain complete:
+
+```bash
+# Use a different training cap
+export TRAINING_SAMPLE_ROWS=500000
+
+# Explicitly use the default complete training split
+export TRAINING_SAMPLE_ROWS=all
+```
+
+On Windows PowerShell, use `$env:TRAINING_SAMPLE_ROWS = "500000"` or `$env:TRAINING_SAMPLE_ROWS = "all"`.
+
 Preparation currently records invalid critical keys, dates, term values, and financial targets as non-blocking warnings in `data/prepared/quality_checks.csv`. A missing required column still stops preparation. Training requires at least three distinct non-null term start dates. Sparse dates or missing 1-, 3-, or 5-year examples within a chronological split produce warnings because the resulting evaluation metrics are not statistically reliable.
 
 ## Optional: regenerate deterministic sample data

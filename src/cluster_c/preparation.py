@@ -11,19 +11,32 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .config import PREPARED_DIR, RAW_COLUMNS, SOURCE_DATASET_VERSION
+from .config import PREPARED_DIR, PREPARED_FEATURE_PATH, RAW_COLUMNS, SOURCE_DATASET_VERSION
 
 LOGGER = logging.getLogger(__name__)
 
 TARGET = "BOOKINGS_NET_PRICE_USD_AMT"
+EXCLUDED_IDENTIFIER_FEATURES = ["CAV_END_CUSTOMER_BU_ID", "UCD_C4_ACCOUNT_ID"]
 FEATURES = [
-    "MONETIZATION_TYPE_CD", "TERM_BUCKET", "CAV_END_CUSTOMER_BU_ID", "UCD_C4_ACCOUNT_ID", "FISCAL_YEAR", "FISCAL_QUARTER_ID",
+    "MONETIZATION_TYPE_CD", "TERM_BUCKET", "FISCAL_YEAR", "FISCAL_QUARTER_ID",
     "FISCAL_PERIOD_ID", "SCMS", "SALES_LEVEL_2", "EA_CATEGORY", "SUITE_NAME",
     "BUSINESS_ENTITY_DESCR", "SUB_BUSINESS_ENTITY_DESCR", "TERM_START_MONTH",
     "CUSTOMER_PRIOR_DEAL_COUNT", "CUSTOMER_PRIOR_AVG_ANNUALIZED_PRICE", "CUSTOMER_PRIOR_AVG_BOOKINGS",
 ]
 NUMERIC_FEATURES = {"FISCAL_YEAR", "FISCAL_QUARTER_ID", "FISCAL_PERIOD_ID", "TERM_START_MONTH", "CUSTOMER_PRIOR_DEAL_COUNT", "CUSTOMER_PRIOR_AVG_ANNUALIZED_PRICE", "CUSTOMER_PRIOR_AVG_BOOKINGS"}
 CATEGORICAL_FEATURES = [c for c in FEATURES if c not in NUMERIC_FEATURES]
+COMPACT_INTEGER_DTYPES = {
+    "FISCAL_YEAR": "Int16",
+    "FISCAL_QUARTER_ID": "Int32",
+    "FISCAL_PERIOD_ID": "Int32",
+    "TERM_START_MONTH": "Int8",
+    "TERM_YEARS": "Int8",
+    "CUSTOMER_PRIOR_DEAL_COUNT": "Int32",
+}
+DERIVED_FLOAT32_COLUMNS = [
+    "CUSTOMER_PRIOR_AVG_ANNUALIZED_PRICE",
+    "CUSTOMER_PRIOR_AVG_BOOKINGS",
+]
 
 TERM_BUCKET_ALIASES = {
     **{value: "1 Year" for value in ("1", "1.0", "1Y", "1YR", "1YRS", "1YEAR", "1YEARS", "ONEYEAR", "12MO", "12MOS", "12MONTH", "12MONTHS")},
@@ -51,6 +64,24 @@ def normalize_term_bucket(series: pd.Series) -> pd.Series:
     mapped = compact.map(TERM_BUCKET_ALIASES)
     output = series.copy()
     output.loc[mapped.notna()] = mapped.loc[mapped.notna()]
+    return output
+
+
+def apply_compact_dtypes(frame: pd.DataFrame) -> pd.DataFrame:
+    """Apply storage-efficient types without reducing raw financial precision."""
+    output = frame.copy(deep=False)
+    for column, dtype in COMPACT_INTEGER_DTYPES.items():
+        if column in output:
+            output[column] = pd.to_numeric(output[column], errors="coerce").astype(dtype)
+    for column in DERIVED_FLOAT32_COLUMNS:
+        if column in output:
+            output[column] = pd.to_numeric(output[column], errors="coerce").astype("float32")
+    for column in CATEGORICAL_FEATURES + ["SOURCE_DATASET_VERSION"]:
+        if column in output:
+            output[column] = output[column].astype("category")
+    for column in (TARGET, "ANNUALIZED_NET_PRICE_USD_AMT"):
+        if column in output:
+            output[column] = pd.to_numeric(output[column], errors="coerce").astype("float64")
     return output
 
 
@@ -142,7 +173,7 @@ def prepare(raw: pd.DataFrame) -> PreparedData:
     )
     frame["SOURCE_DATASET_VERSION"] = SOURCE_DATASET_VERSION
     columns = list(dict.fromkeys(["SUBSCRIPTION_REFERENCE_ID", "CAV_END_CUSTOMER_BU_ID", "CAV_END_CUSTOMER_BU_NAME", "UCD_C4_ACCOUNT_ID", "TERM_START_DATE", "TERM_END_DATE", "ANNUALIZED_NET_PRICE_USD_AMT", "TERM_YEARS"] + FEATURES + [TARGET, "SOURCE_DATASET_VERSION"]))
-    frame = frame[columns]
+    frame = apply_compact_dtypes(frame[columns])
     summary = {
         "source_dataset_version": SOURCE_DATASET_VERSION,
         "grain": "One row per subscription reference",
@@ -153,6 +184,9 @@ def prepare(raw: pd.DataFrame) -> PreparedData:
         "start_date_max": str(frame["TERM_START_DATE"].max().date()) if frame["TERM_START_DATE"].notna().any() else None,
         "quality_checks_passed": int((checks.status == "PASS").sum()),
         "quality_checks_total": len(checks),
+        "prepared_feature_format": "parquet",
+        "prepared_feature_compression": "snappy",
+        "prepared_dtype_policy": "compact integers/categories; float32 derived model history; float64 raw financials",
     }
     return PreparedData(frame, profile(raw), checks, summary)
 
@@ -160,8 +194,9 @@ def prepare(raw: pd.DataFrame) -> PreparedData:
 def save_prepared(result: PreparedData, output_dir: Path = PREPARED_DIR) -> dict[str, Path]:
     LOGGER.info("Writing prepared artifacts to %s", output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    paths = {"features": output_dir / "term_model_features.csv", "profile": output_dir / "source_profile.csv", "checks": output_dir / "quality_checks.csv", "summary": output_dir / "preparation_summary.json"}
-    result.frame.to_csv(paths["features"], index=False, date_format="%Y-%m-%d")
+    feature_path = PREPARED_FEATURE_PATH if output_dir == PREPARED_DIR else output_dir / PREPARED_FEATURE_PATH.name
+    paths = {"features": feature_path, "profile": output_dir / "source_profile.csv", "checks": output_dir / "quality_checks.csv", "summary": output_dir / "preparation_summary.json"}
+    result.frame.to_parquet(paths["features"], index=False, engine="pyarrow", compression="snappy")
     result.profile.to_csv(paths["profile"], index=False)
     result.checks.to_csv(paths["checks"], index=False)
     paths["summary"].write_text(json.dumps(result.summary, indent=2) + "\n", encoding="utf-8")

@@ -13,6 +13,7 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from cluster_c.config import PREPARED_FEATURE_PATH  # noqa: E402
 from cluster_c.model import predict_term_options  # noqa: E402
 from cluster_c.scenario import (  # noqa: E402
     annual_coverage,
@@ -32,14 +33,14 @@ def money(value: float) -> str:
 
 @st.cache_data
 def load_scored() -> tuple[pd.DataFrame, dict, pd.DataFrame]:
-    feature_path = ROOT / "data/prepared/term_model_features.csv"
+    feature_path = PREPARED_FEATURE_PATH
     model_dir = ROOT / "data/models/cluster_c_term_v1"
     required = [feature_path, model_dir / "metadata.json", model_dir / "metrics.csv"]
-    required += [model_dir / name for name in ("bookings_point.cbm", "bookings_lower_10.cbm", "bookings_upper_90.cbm")]
+    required += [model_dir / name for name in ("bookings_point.cbm", "bookings_interval_10_90.cbm")]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
         raise FileNotFoundError("Missing artifacts: " + ", ".join(missing))
-    frame = pd.read_csv(feature_path, parse_dates=["TERM_START_DATE", "TERM_END_DATE"])
+    frame = pd.read_parquet(feature_path, engine="pyarrow")
     predictions = predict_term_options(frame, model_dir)
     # Predictions are returned in the same row order as the feature frame.
     # Position-based attachment keeps diagnostic rows with duplicate or null

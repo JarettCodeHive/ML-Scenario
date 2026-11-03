@@ -1,16 +1,14 @@
 {
   "model_version": "cluster-c-term-catboost-v1",
-  "trained_at_utc": "2026-10-30T14:46:46.549400+00:00",
-  "source_dataset_version": "cluster-c-synthetic-v1-seed42",
-  "dataset_sha256": "38e1dda7f70e136904e9d8afdebfdab2ec054f8de2e8a6fe152944e88f778b0a",
+  "trained_at_utc": "2026-11-03T07:07:15.757810+00:00",
+  "source_dataset_version": "cisco-cluster-c-20261103-v5",
+  "dataset_sha256": "95a1b8a96cae54dce5a04ef7d44870ce8b21bb2b6e35e01a4f28280032b5339a",
   "target": "BOOKINGS_NET_PRICE_USD_AMT",
-  "model_type": "CatBoost S-learner with TERM_BUCKET as treatment feature",
+  "model_type": "CatBoost S-learner with MAE point and MultiQuantile P10/P90 models",
   "catboost_version": "1.2.10",
   "features": [
     "MONETIZATION_TYPE_CD",
     "TERM_BUCKET",
-    "CAV_END_CUSTOMER_BU_ID",
-    "UCD_C4_ACCOUNT_ID",
     "FISCAL_YEAR",
     "FISCAL_QUARTER_ID",
     "FISCAL_PERIOD_ID",
@@ -28,8 +26,6 @@
   "categorical_features": [
     "MONETIZATION_TYPE_CD",
     "TERM_BUCKET",
-    "CAV_END_CUSTOMER_BU_ID",
-    "UCD_C4_ACCOUNT_ID",
     "SCMS",
     "SALES_LEVEL_2",
     "EA_CATEGORY",
@@ -37,10 +33,46 @@
     "BUSINESS_ENTITY_DESCR",
     "SUB_BUSINESS_ENTITY_DESCR"
   ],
-  "best_iteration": 649,
-  "test_wape_pct": 15.396283502654958,
-  "baseline_wape_pct": 47.00368006251954,
-  "relative_wape_improvement_pct": 67.24451472272729,
+  "excluded_identifier_features": [
+    "CAV_END_CUSTOMER_BU_ID",
+    "UCD_C4_ACCOUNT_ID"
+  ],
+  "thread_count": 2,
+  "training_config": {
+    "iterations": 400,
+    "depth": 6,
+    "learning_rate": 0.06,
+    "l2_leaf_reg": 6.0,
+    "early_stopping_rounds": 40
+  },
+  "training_sampling": {
+    "enabled": false,
+    "max_training_rows": null,
+    "source_training_rows": 2655635,
+    "sampled_training_rows": 2655635,
+    "sample_fraction": 1.0,
+    "strata": [
+      "FISCAL_YEAR",
+      "TERM_BUCKET",
+      "SCMS",
+      "SUITE_NAME"
+    ],
+    "random_seed": 42
+  },
+  "max_ctr_complexity": 1,
+  "ctr_leaf_count_limit": 100000,
+  "best_iteration": 399,
+  "best_iterations": {
+    "point": 399,
+    "interval": 399
+  },
+  "model_count": 2,
+  "interval_loss": "MultiQuantile:alpha=0.1,0.9",
+  "model_matrix_numeric_dtype": "float32",
+  "target_training_dtype": "float32",
+  "test_wape_pct": 8.098744223058873,
+  "baseline_wape_pct": 33.76956904769741,
+  "relative_wape_improvement_pct": 76.01762636763323,
   "causal_claim_supported": false,
   "local_training_only": true
 }

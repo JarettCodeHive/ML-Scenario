@@ -2,7 +2,13 @@ import numpy as np
 import pandas as pd
 
 from cluster_c.config import RAW_COLUMNS
-from cluster_c.preparation import prepare
+from cluster_c.preparation import (
+    CATEGORICAL_FEATURES,
+    DERIVED_FLOAT32_COLUMNS,
+    NUMERIC_FEATURES,
+    prepare,
+    save_prepared,
+)
 from cluster_c.synthetic import generate_term_deals
 
 
@@ -52,3 +58,33 @@ def test_common_term_bucket_aliases_are_normalized() -> None:
 
     actual = dict(zip(result.frame["SUBSCRIPTION_REFERENCE_ID"], result.frame["TERM_BUCKET"]))
     assert actual == expected
+
+
+def test_prepared_features_are_saved_as_parquet(tmp_path) -> None:
+    result = prepare(generate_term_deals(seed=42, row_count=50))
+
+    paths = save_prepared(result, tmp_path)
+    restored = pd.read_parquet(paths["features"], engine="pyarrow")
+
+    assert paths["features"].name == "term_model_features.parquet"
+    assert len(restored) == len(result.frame)
+    assert restored.columns.tolist() == result.frame.columns.tolist()
+    assert pd.api.types.is_datetime64_any_dtype(restored["TERM_START_DATE"])
+    assert result.summary["prepared_feature_format"] == "parquet"
+    assert result.summary["prepared_feature_compression"] == "snappy"
+
+
+def test_prepared_data_uses_compact_explicit_dtypes() -> None:
+    frame = prepare(generate_term_deals(seed=42, row_count=100)).frame
+
+    assert str(frame["FISCAL_YEAR"].dtype) == "Int16"
+    assert str(frame["FISCAL_QUARTER_ID"].dtype) == "Int32"
+    assert str(frame["FISCAL_PERIOD_ID"].dtype) == "Int32"
+    assert str(frame["TERM_START_MONTH"].dtype) == "Int8"
+    assert str(frame["TERM_YEARS"].dtype) == "Int8"
+    assert str(frame["CUSTOMER_PRIOR_DEAL_COUNT"].dtype) == "Int32"
+    assert all(str(frame[column].dtype) == "float32" for column in DERIVED_FLOAT32_COLUMNS)
+    assert all(isinstance(frame[column].dtype, pd.CategoricalDtype) for column in CATEGORICAL_FEATURES)
+    assert frame["BOOKINGS_NET_PRICE_USD_AMT"].dtype == "float64"
+    assert frame["ANNUALIZED_NET_PRICE_USD_AMT"].dtype == "float64"
+    assert NUMERIC_FEATURES.issubset(frame.columns)

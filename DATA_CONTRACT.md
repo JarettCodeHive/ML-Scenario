@@ -9,9 +9,9 @@ The column names below reproduce the supplied Cisco schema image. If the Snowfla
 | `MONETIZATION_TYPE_CD` | string | No | Categorical model feature |
 | `TERM_BUCKET` | string | Yes | Must map to `1 Year`, `3 Year`, or `5 Year` |
 | `SUBSCRIPTION_REFERENCE_ID` | string | Yes | Unique row/deal identifier |
-| `CAV_END_CUSTOMER_BU_ID` | integer/string | Yes | Customer history and categorical feature |
+| `CAV_END_CUSTOMER_BU_ID` | integer/string | Yes | Customer history, split reporting, and traceability; excluded from model features |
 | `CAV_END_CUSTOMER_BU_NAME` | string | No | UI label only; use pseudonymous names if needed |
-| `UCD_C4_ACCOUNT_ID` | integer/string | No | Account-level categorical feature |
+| `UCD_C4_ACCOUNT_ID` | integer/string | No | Account-level traceability; excluded from model features |
 | `TERM_START_DATE` | date/timestamp | Yes | Chronological split and history cutoff |
 | `TERM_END_DATE` | date/timestamp | Yes | Term validation |
 | `FISCAL_YEAR` | integer | No | Numeric model feature |
