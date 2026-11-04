@@ -1,6 +1,14 @@
+import os
 from pathlib import Path
 
+import pytest
 from streamlit.testing.v1 import AppTest
+
+
+pytestmark = pytest.mark.skipif(
+    os.getenv("RUN_FULL_APP_TEST") != "1",
+    reason="Set RUN_FULL_APP_TEST=1 when complete prepared/model artifacts are available",
+)
 
 
 def test_single_page_streamlit_ui() -> None:

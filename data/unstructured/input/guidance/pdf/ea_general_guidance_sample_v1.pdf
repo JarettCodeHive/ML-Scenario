@@ -1,0 +1,195 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Count 3 /Kids [3 0 R 5 0 R 7 0 R] >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 952 >>
+stream
+BT
+/F1 10 Tf
+50 742 Td
+14 TL
+(SAMPLE EA THREE-LENS DECISION GUIDANCE) Tj
+T*
+(Version: v1) Tj
+T*
+(Effective date: 2026-11-04) Tj
+T*
+(Review status: NOT APPROVED) Tj
+T*
+() Tj
+T*
+(IMPORTANT DISCLAIMER) Tj
+T*
+(This is synthetic guidance created only to test the EA modelling pipeline.) Tj
+T*
+(It is not Cisco policy, approved methodology, accounting guidance, or advice.) Tj
+T*
+(Production thresholds must be reviewed and replaced by authorized EA owners.) Tj
+T*
+() Tj
+T*
+(PURPOSE) Tj
+T*
+(Define transparent interpretation rules for the existing three decision lenses:) Tj
+T*
+(1. Growth) Tj
+T*
+(2. Customer value) Tj
+T*
+(3. Simplicity with scale) Tj
+T*
+() Tj
+T*
+(SCOPE) Tj
+T*
+(These rules apply at portfolio level to the Cluster C term-flexibility scenario.) Tj
+T*
+(They define interpretation and thresholds; they are not attached to individual deals.) Tj
+T*
+(The CatBoost model remains responsible for bookings estimates under each term option.) Tj
+T*
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 1115 >>
+stream
+BT
+/F1 10 Tf
+50 742 Td
+14 TL
+(SAMPLE RULE DEFINITIONS) Tj
+T*
+() Tj
+T*
+(GROWTH-G-001 - Commitment direction) Tj
+T*
+(Measure: commitment_change_pct) Tj
+T*
+(Favorable: value greater than 0 percent.) Tj
+T*
+(Neutral: value equal to 0 percent within the approved rounding tolerance.) Tj
+T*
+(Attention: value less than 0 percent.) Tj
+T*
+(Explanation: compares flexible-term commitment with the uniform 3-year reference.) Tj
+T*
+() Tj
+T*
+(GROWTH-G-002 - NPV direction) Tj
+T*
+(Measure: npv_change) Tj
+T*
+(Favorable: value greater than or equal to 0.) Tj
+T*
+(Attention: value less than 0.) Tj
+T*
+(Explanation: uses the configured annual discount rate and straight-line proxy.) Tj
+T*
+() Tj
+T*
+(CUSTOMER-CV-001 - Term choice) Tj
+T*
+(Measure: flexible_adoption_pct) Tj
+T*
+(Report the selected flexible-deal share; do not label a higher share as better.) Tj
+T*
+(Explanation: term choice is a proxy until direct customer outcomes are available.) Tj
+T*
+() Tj
+T*
+(CUSTOMER-CV-002 - Expected term) Tj
+T*
+(Measure: average_term_years) Tj
+T*
+(Report direction against 3 years without assigning positive or negative sentiment.) Tj
+T*
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 9 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 1299 >>
+stream
+BT
+/F1 10 Tf
+50 742 Td
+14 TL
+(SAMPLE RULE DEFINITIONS - CONTINUED) Tj
+T*
+() Tj
+T*
+(SIMPLICITY-S-001 - Renewal decision points) Tj
+T*
+(Measure: scenario_renewal_points minus baseline_renewal_points) Tj
+T*
+(Favorable: change less than or equal to 0.) Tj
+T*
+(Attention: change greater than 0.) Tj
+T*
+(Explanation: more decision points are treated as additional operational touchpoints.) Tj
+T*
+() Tj
+T*
+(SIMPLICITY-S-002 - Coverage volatility) Tj
+T*
+(Measure: scenario_coverage_cv_pct minus baseline_coverage_cv_pct) Tj
+T*
+(Favorable: change less than or equal to 0 percentage points.) Tj
+T*
+(Attention: change greater than 0 percentage points.) Tj
+T*
+(Explanation: this is a stability proxy, not revenue recognition logic.) Tj
+T*
+() Tj
+T*
+(GOVERNANCE REQUIREMENTS) Tj
+T*
+(Every extracted rule must retain source ID, version, page number, and source hash.) Tj
+T*
+(Unknown or ambiguous language must not be converted into a decision threshold.) Tj
+T*
+(Conflicting guidance must be flagged for review instead of silently overridden.) Tj
+T*
+(Only approved guidance may influence production lens status or explanatory text.) Tj
+T*
+(A new source version must produce a new prepared-rule version and audit record.) Tj
+T*
+(Model outputs are observational and must not be presented as causal effects.) Tj
+T*
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 10
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000259 00000 n 
+0000001261 00000 n 
+0000001387 00000 n 
+0000002553 00000 n 
+0000002679 00000 n 
+0000004029 00000 n 
+trailer
+<< /Size 10 /Root 1 0 R >>
+startxref
+4099
+%%EOF

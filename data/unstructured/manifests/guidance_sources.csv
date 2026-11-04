@@ -1,0 +1,2 @@
+source_id,source_path,source_type,guidance_type,title,version,effective_date,review_status,is_synthetic,sha256
+EA-GUIDE-SAMPLE-001,data/unstructured/input/guidance/pdf/ea_general_guidance_sample_v1.pdf,pdf,general_ea_guidance,Sample EA Three-Lens Decision Guidance,v1,2026-11-04,not_approved,true,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da

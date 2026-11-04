@@ -25,3 +25,12 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *:Zone.Identifier
+
+# Generated unstructured-guidance artifacts
+data/unstructured/cache/*
+!data/unstructured/cache/.gitkeep
+data/unstructured/prepared/*
+!data/unstructured/prepared/.gitkeep
+
+# Generated structured-data feature artifacts
+data/prepared/term_model_features.parquet

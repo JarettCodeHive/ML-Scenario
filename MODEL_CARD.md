@@ -30,6 +30,26 @@ TERM_BUCKET = 5 Year
 
 Two CatBoost models are saved locally: an MAE central model and a MultiQuantile model that produces the 10th- and 90th-percentile estimates together. The deal-level and scenario outputs continue to expose separate P10 and P90 values.
 
+## EA guidance decision layer
+
+General EA guidance PDFs are processed separately from the CatBoost models. Page text is deterministically converted into schema-controlled candidate rules, reviewed through a hash-bound approval registry, and evaluated only after portfolio scenario summarisation.
+
+The guidance layer:
+
+- Does not add PDF text or embeddings to CatBoost features.
+- Does not require subscription-level document matching.
+- Does not retrain or modify the saved CatBoost models.
+- Allows only predefined measures, operators, outcomes, and optional portfolio scopes.
+- Never executes code or arbitrary expressions extracted from a PDF.
+- Requires both source-level and rule-level approval before a rule becomes active.
+- Invalidates approval when the source version or SHA-256 changes.
+
+Optional scope is restricted to `SCMS`, `SALES_LEVEL_2`, and `SUITE_NAME`. A scoped rule applies only when the corresponding UI filter exclusively selects the declared value. Unfiltered or mixed portfolios do not receive a segment-specific rule.
+
+The included guidance PDF is synthetic and `not_approved`; it is useful for pipeline validation but cannot affect lens status. Missing or malformed guidance does not block structured model results.
+
+This rule layer provides decision interpretation, not a learned unstructured model. No claim should be made that the PDF improves predictive accuracy. The quality and authority of displayed guidance depend on source ownership, human review, effective dates, and controlled version management.
+
 ## Synthetic evaluation
 
 | Measure | Result |

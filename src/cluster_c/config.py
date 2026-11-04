@@ -7,6 +7,28 @@ INPUT_PATH = DATA_DIR / "input" / "term_deals.csv"
 PREPARED_DIR = DATA_DIR / "prepared"
 PREPARED_FEATURE_PATH = PREPARED_DIR / "term_model_features.parquet"
 MODEL_DIR = DATA_DIR / "models" / "cluster_c_term_v1"
+
+# General EA guidance PDFs and generated guidance artifacts. These paths are
+# independent of the structured term-deal preparation and CatBoost models.
+UNSTRUCTURED_DIR = DATA_DIR / "unstructured"
+GUIDANCE_PDF_DIR = UNSTRUCTURED_DIR / "input" / "guidance" / "pdf"
+GUIDANCE_MANIFEST_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_sources.csv"
+GUIDANCE_APPROVALS_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_rule_approvals.csv"
+GUIDANCE_SOURCE_APPROVALS_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_source_approvals.csv"
+GUIDANCE_CANDIDATE_REVIEWS_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_candidate_reviews.csv"
+GUIDANCE_REVIEW_POLICY_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_review_policy.csv"
+GUIDANCE_GOVERNANCE_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_governance.csv"
+GUIDANCE_COMPATIBILITY_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_compatibility.csv"
+GUIDANCE_PREPARED_DIR = UNSTRUCTURED_DIR / "prepared"
+GUIDANCE_CONTENT_PATH = GUIDANCE_PREPARED_DIR / "guidance_content.parquet"
+GUIDANCE_RULES_PATH = GUIDANCE_PREPARED_DIR / "guidance_rules.json"
+GUIDANCE_QUALITY_PATH = GUIDANCE_PREPARED_DIR / "guidance_quality.csv"
+GUIDANCE_COMPATIBILITY_REPORT_PATH = GUIDANCE_PREPARED_DIR / "guidance_compatibility_report.csv"
+GUIDANCE_SUMMARY_PATH = GUIDANCE_PREPARED_DIR / "guidance_preparation_summary.json"
+GUIDANCE_CANDIDATE_REVIEW_REPORT_PATH = GUIDANCE_PREPARED_DIR / "guidance_candidate_review_report.csv"
+GUIDANCE_RELEASE_METADATA_PATH = GUIDANCE_PREPARED_DIR / "guidance_release_metadata.json"
+GUIDANCE_CACHE_DIR = UNSTRUCTURED_DIR / "cache"
+
 RANDOM_SEED = 42
 SOURCE_DATASET_VERSION = os.getenv("SOURCE_DATASET_VERSION", "cluster-c-synthetic-v1-seed42")
 

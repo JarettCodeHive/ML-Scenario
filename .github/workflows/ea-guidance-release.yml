@@ -1,0 +1,63 @@
+name: Build EA guidance release
+
+on:
+  workflow_dispatch:
+    inputs:
+      application_version:
+        description: Application release version
+        required: true
+        type: string
+      expected_active_rule_ids:
+        description: Comma-separated approved rule IDs, or explicit value "none"
+        required: true
+        type: string
+      warning_policy:
+        description: Release warning policy
+        required: true
+        default: fail
+        type: choice
+        options:
+          - fail
+          - report
+
+permissions:
+  contents: read
+
+jobs:
+  release-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: src
+      RUN_FULL_APP_TEST: "0"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --requirement requirements.txt
+
+      - name: Run release tests
+        run: python -m pytest -q
+
+      - name: Build validated guidance release bundle
+        run: >-
+          python scripts/build_ea_guidance_release.py
+          --application-version "${{ inputs.application_version }}"
+          --expected-active-rule-ids "${{ inputs.expected_active_rule_ids }}"
+          --warning-policy "${{ inputs.warning_policy }}"
+
+      - name: Upload immutable release bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ea-guidance-release-${{ inputs.application_version }}-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 30
+          path: data/unstructured/prepared/
