@@ -22,6 +22,7 @@ from cluster_c.scenario import (  # noqa: E402
     sensitivity,
     summarise,
 )
+from cluster_c.ui import filter_options  # noqa: E402
 
 st.set_page_config(page_title="Cisco EA Cluster C ML Scenario", page_icon="📅", layout="wide")
 
@@ -74,16 +75,16 @@ except (FileNotFoundError, ValueError) as exc:
     st.stop()
 
 f1, f2, f3 = st.columns(3)
-sales_levels = f1.multiselect("Sales level 2", sorted(scored["SALES_LEVEL_2"].unique()), placeholder="All")
-segments = f2.multiselect("SCMS", sorted(scored["SCMS"].unique()), placeholder="All")
-suites = f3.multiselect("Suite", sorted(scored["SUITE_NAME"].unique()), placeholder="All")
+sales_levels = f1.multiselect("Sales level 2", filter_options(scored["SALES_LEVEL_2"]), placeholder="All")
+segments = f2.multiselect("SCMS", filter_options(scored["SCMS"]), placeholder="All")
+suites = f3.multiselect("Suite", filter_options(scored["SUITE_NAME"]), placeholder="All")
 
 l1, l2, l3 = st.columns(3)
 adoption = l1.slider("Deals using flexible terms", 0, 100, 100, 5, format="%d%%")
 five_share = l2.slider("Five-year share of flexible deals", 0, 100, 50, 5, format="%d%%")
 discount_rate = l3.slider("Annual discount rate", 0, 20, 8, 1, format="%d%%")
 
-scope = scored.copy()
+scope = scored
 if sales_levels: scope = scope[scope.SALES_LEVEL_2.isin(sales_levels)]
 if segments: scope = scope[scope.SCMS.isin(segments)]
 if suites: scope = scope[scope.SUITE_NAME.isin(suites)]
