@@ -19,7 +19,7 @@ def test_sample_guidance_manifest_matches_pdf() -> None:
     assert source_path.exists()
     assert content.startswith(b"%PDF-1.4")
     assert hashlib.sha256(content).hexdigest() == row["sha256"]
-    assert bool(row["is_synthetic"])
+    assert not bool(row["is_synthetic"])
     assert row["review_status"] == "not_approved"
 
 
@@ -28,6 +28,6 @@ def test_sample_guidance_pdf_generation_is_deterministic() -> None:
     second = build_pdf(PAGES)
 
     assert first == second
-    assert b"NOT APPROVED" in first
+    assert b"Activation mode: Direct POC" in first
     assert b"GROWTH-G-001" in first
     assert b"SIMPLICITY-S-002" in first

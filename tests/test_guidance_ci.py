@@ -14,7 +14,7 @@ def test_ci_guidance_artifacts_are_deterministic_and_blocking_checks_pass() -> N
     assert report["failure_count"] == 0
     assert report["warning_count"] > 0
     assert report["candidate_rule_count"] == 6
-    assert report["active_rule_count"] == 0
+    assert report["active_rule_count"] == 6
     assert set(report["artifact_sha256"]) == {
         "content",
         "quality",
@@ -25,6 +25,6 @@ def test_ci_guidance_artifacts_are_deterministic_and_blocking_checks_pass() -> N
     }
 
 
-def test_strict_warning_policy_blocks_current_in_review_fixture() -> None:
+def test_strict_warning_policy_blocks_current_direct_poc_fixture() -> None:
     with pytest.raises(ValueError, match="warnings are forbidden"):
         validate_ci_guidance("fail", FIXED_EXTRACTION_TIME)

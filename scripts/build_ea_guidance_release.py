@@ -34,7 +34,7 @@ def main() -> None:
             else None
         ),
         required="EXPECTED_GUIDANCE_ACTIVE_RULE_IDS" not in os.environ,
-        help="Comma-separated approved rule IDs, or 'none'",
+        help="Comma-separated expected active rule IDs, or 'none'",
     )
     parser.add_argument(
         "--warning-policy",

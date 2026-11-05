@@ -24,7 +24,7 @@ from cluster_c.config import (
 
 def test_guidance_paths_are_repository_relative_and_separate_from_structured_data() -> None:
     assert UNSTRUCTURED_DIR == DATA_DIR / "unstructured"
-    assert GUIDANCE_PDF_DIR == UNSTRUCTURED_DIR / "input" / "guidance" / "pdf"
+    assert GUIDANCE_PDF_DIR == UNSTRUCTURED_DIR / "input"
     assert GUIDANCE_MANIFEST_PATH == UNSTRUCTURED_DIR / "manifests" / "guidance_sources.csv"
     assert GUIDANCE_APPROVALS_PATH == UNSTRUCTURED_DIR / "manifests" / "guidance_rule_approvals.csv"
     assert GUIDANCE_SOURCE_APPROVALS_PATH == UNSTRUCTURED_DIR / "manifests" / "guidance_source_approvals.csv"

@@ -6,6 +6,7 @@ import logging
 import time
 
 from cluster_c.config import GUIDANCE_MANIFEST_PATH
+from cluster_c.unstructured.discovery import refresh_guidance_manifest
 from cluster_c.unstructured.preparation import prepare_guidance, save_guidance_preparation
 
 
@@ -14,6 +15,8 @@ LOGGER = logging.getLogger("prepare_ea_guidance")
 
 def main() -> None:
     started = time.perf_counter()
+    manifest = refresh_guidance_manifest()
+    LOGGER.info("Discovered %d PDF source(s) and refreshed %s", len(manifest), GUIDANCE_MANIFEST_PATH)
     LOGGER.info("Reading EA guidance manifest from %s", GUIDANCE_MANIFEST_PATH)
     result = prepare_guidance()
     paths = save_guidance_preparation(result)

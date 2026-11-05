@@ -13,7 +13,7 @@ GUIDANCE_STATUS_LABELS = {
     "attention": "Attention required",
     "report_only": "Informational",
     "unknown": "Unable to evaluate",
-    "not_available": "No approved rule applied",
+    "not_available": "No guidance rule applied",
 }
 
 
@@ -56,7 +56,7 @@ def guidance_panel_state(
     if error:
         return "error", f"EA guidance is unavailable: {error}"
     if active_count == 0:
-        return "unapproved", "No approved EA guidance has been applied. Structured scenario results remain available."
+        return "unavailable", "No EA guidance rule has been applied. Structured scenario results remain available."
     if applied_count == 0:
-        return "out_of_scope", "Approved EA guidance exists, but no rule applies to the currently selected portfolio scope."
-    return "applied", f"Applied {applied_count} approved EA guidance rules."
+        return "out_of_scope", "EA guidance exists, but no rule applies to the currently selected portfolio scope."
+    return "applied", f"Applied {applied_count} EA guidance rules."

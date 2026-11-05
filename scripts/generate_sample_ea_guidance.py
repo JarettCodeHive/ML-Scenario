@@ -6,19 +6,19 @@ import hashlib
 from pathlib import Path
 
 
-OUTPUT_PATH = Path("data/unstructured/input/guidance/pdf/ea_general_guidance_sample_v1.pdf")
+OUTPUT_PATH = Path("data/unstructured/input/ea_general_guidance_sample_v1.pdf")
 
 PAGES = [
     [
         "SAMPLE EA THREE-LENS DECISION GUIDANCE",
         "Version: v1",
         "Effective date: 2026-11-04",
-        "Review status: NOT APPROVED",
+        "Activation mode: Direct POC",
         "",
         "IMPORTANT DISCLAIMER",
         "This is synthetic guidance created only to test the EA modelling pipeline.",
         "It is not Cisco policy, approved methodology, accounting guidance, or advice.",
-        "Production thresholds must be reviewed and replaced by authorized EA owners.",
+        "Production thresholds should be replaced by authorized EA owners before production use.",
         "",
         "PURPOSE",
         "Define transparent interpretation rules for the existing three decision lenses:",
@@ -75,7 +75,7 @@ PAGES = [
         "Every extracted rule must retain source ID, version, page number, and source hash.",
         "Unknown or ambiguous language must not be converted into a decision threshold.",
         "Conflicting guidance must be flagged for review instead of silently overridden.",
-        "Only approved guidance may influence production lens status or explanatory text.",
+        "Every structurally valid extracted rule is activated directly for this POC.",
         "A new source version must produce a new prepared-rule version and audit record.",
         "Model outputs are observational and must not be presented as causal effects.",
     ],

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from cluster_c.config import RAW_COLUMNS
+from cluster_c.config import CX_UPSELL_GROUP_VALUES, RAW_COLUMNS, XCAT_FLAG_VALUES
 from cluster_c.preparation import (
     CATEGORICAL_FEATURES,
     DERIVED_FLOAT32_COLUMNS,
@@ -18,6 +18,10 @@ def test_synthetic_data_is_deterministic_and_matches_contract() -> None:
     pd.testing.assert_frame_equal(first, second)
     assert set(RAW_COLUMNS).issubset(first.columns)
     assert set(first.TERM_BUCKET) == {"1 Year", "3 Year", "5 Year"}
+    assert first[["CX_UPSELL_GROUP", "XCAT_FLG", "DV_ATTRIBUTION_CD"]].notna().all().all()
+    assert set(first.CX_UPSELL_GROUP).issubset(CX_UPSELL_GROUP_VALUES)
+    assert set(first.XCAT_FLG).issubset(XCAT_FLAG_VALUES)
+    assert pd.api.types.is_float_dtype(first.DV_ATTRIBUTION_CD)
 
 
 def test_preparation_passes_and_prior_history_does_not_use_current_target() -> None:

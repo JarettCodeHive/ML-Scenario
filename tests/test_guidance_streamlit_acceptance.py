@@ -50,7 +50,7 @@ def test_three_lens_cards_and_default_guidance_statuses_render() -> None:
     assert "#### 3. Simplicity with scale" in markdown
     assert "**EA guidance: Favorable**" in markdown
     assert "**EA guidance: Informational**" in markdown
-    assert "**EA guidance: No approved rule applied**" in markdown
+    assert "**EA guidance: No guidance rule applied**" in markdown
     assert _element(app.metric, "Structured scenario commitment").value == "$1,000,000"
 
 
@@ -115,12 +115,12 @@ def test_no_matching_scope_is_explicit_and_structured_result_remains_visible() -
     assert _element(app.metric, "Structured scenario commitment").value == "$1,000,000"
 
 
-def test_no_approved_and_missing_guidance_do_not_hide_structured_result() -> None:
+def test_no_active_and_missing_guidance_do_not_hide_structured_result() -> None:
     app = _run()
 
     _element(app.selectbox, "Guidance state").set_value("No approved guidance").run()
-    assert _markdown(app).count("**EA guidance: No approved rule applied**") == 3
-    assert any("No approved EA guidance" in element.value for element in app.info)
+    assert _markdown(app).count("**EA guidance: No guidance rule applied**") == 3
+    assert any("No EA guidance rule" in element.value for element in app.info)
     assert _element(app.metric, "Structured scenario commitment").value == "$1,000,000"
 
     _element(app.selectbox, "Guidance state").set_value("Missing registry").run()

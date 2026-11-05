@@ -10,7 +10,7 @@ from .unstructured.decision_rules import GuidanceRegistry
 
 
 def render_lens_guidance(evaluation: dict, lens: str) -> None:
-    """Render the status and reviewed explanations for one decision lens."""
+    """Render the status and explanations for one decision lens."""
     result = evaluation["lenses"][lens]
     st.markdown(f"**EA guidance: {guidance_status_label(result['status'])}**")
     for reason in result["reasons"]:
@@ -33,7 +33,7 @@ def render_guidance_traceability(
         if guidance_panel == "error":
             st.warning(guidance_panel_message)
             st.code("PYTHONPATH=src python scripts/prepare_ea_guidance.py", language="bash")
-        elif guidance_panel == "unapproved":
+        elif guidance_panel == "unavailable":
             st.info(guidance_panel_message)
             if guidance_registry:
                 st.caption(
@@ -59,6 +59,6 @@ def render_guidance_traceability(
                 hide_index=True,
             )
             st.caption(
-                f"Applied {guidance_evaluation['applied_rule_count']} approved rules from registry "
+                f"Applied {guidance_evaluation['applied_rule_count']} rules from registry "
                 f"generated {guidance_registry.generated_at_utc}."
             )

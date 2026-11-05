@@ -51,7 +51,7 @@ def test_inspection_reports_extraction_and_candidate_details(tmp_path) -> None:
     assert inspected.sources.loc[0, "page_count"] == 3
     assert inspected.sources.loc[0, "text_character_count"] > 0
     assert len(inspected.candidates) == 6
-    assert len(inspected.registry.active_rules) == 0
+    assert len(inspected.registry.active_rules) == 6
     assert inspected.failures.empty
     assert not inspected.warnings.empty
     assert inspected.pages["page_number"].tolist() == [1, 2, 3]

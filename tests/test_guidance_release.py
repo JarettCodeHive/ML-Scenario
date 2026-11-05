@@ -13,6 +13,14 @@ from cluster_c.unstructured.release import (
 
 
 DEPLOYMENT_TIME = datetime(2026, 11, 4, 15, 0, tzinfo=timezone.utc)
+ACTIVE_RULE_IDS = {
+    "GROWTH-G-001",
+    "GROWTH-G-002",
+    "CUSTOMER-CV-001",
+    "CUSTOMER-CV-002",
+    "SIMPLICITY-S-001",
+    "SIMPLICITY-S-002",
+}
 
 
 def _metadata_files(tmp_path):
@@ -38,7 +46,7 @@ def test_release_build_publishes_validated_bundle_and_metadata(tmp_path) -> None
 
     metadata = build_guidance_release(
         application_version="test-app-v1",
-        expected_active_rule_ids=set(),
+        expected_active_rule_ids=ACTIVE_RULE_IDS,
         warning_policy="report",
         prepared_dir=prepared_dir,
         model_metadata_path=model,
@@ -63,11 +71,12 @@ def test_release_build_publishes_validated_bundle_and_metadata(tmp_path) -> None
     assert metadata["application_version"] == "test-app-v1"
     assert metadata["structured_model_version"] == "test-model-v1"
     assert metadata["structured_dataset_version"] == "test-dataset-v1"
-    assert metadata["active_rule_ids"] == []
-    assert metadata["active_rule_count"] == 0
+    assert set(metadata["active_rule_ids"]) == ACTIVE_RULE_IDS
+    assert metadata["active_rule_count"] == 6
+    assert metadata["guidance_activation_mode"] == "direct_poc"
     assert metadata["quality_failure_count"] == 0
     assert metadata["guidance_sources"][0]["source_id"] == "EA-GUIDE-SAMPLE-001"
-    assert metadata["guidance_sources"][0]["active"] is False
+    assert metadata["guidance_sources"][0]["active"] is True
     assert metadata["deployment_time_utc"] == DEPLOYMENT_TIME.isoformat()
 
 

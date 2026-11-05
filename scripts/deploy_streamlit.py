@@ -28,7 +28,7 @@ def main() -> None:
         type=parse_expected_rule_ids,
         default=(parse_expected_rule_ids(os.environ["EXPECTED_GUIDANCE_ACTIVE_RULE_IDS"]) if "EXPECTED_GUIDANCE_ACTIVE_RULE_IDS" in os.environ else None),
         required="EXPECTED_GUIDANCE_ACTIVE_RULE_IDS" not in os.environ,
-        help="Comma-separated approved rule IDs, or 'none'",
+        help="Comma-separated expected active rule IDs, or 'none'",
     )
     parser.add_argument("--warning-policy", choices=["report", "fail"], default=os.getenv("GUIDANCE_RELEASE_WARNING_POLICY", "fail"))
     parser.add_argument("--validate-only", action="store_true", help="Run the release gate without starting Streamlit")

@@ -30,13 +30,19 @@ def _copy_csv(source, destination):
     return frame
 
 
-def test_synthetic_rule_cannot_be_approved() -> None:
+def test_synthetic_rule_cannot_be_approved(tmp_path) -> None:
+    manifest_path = tmp_path / "sources.csv"
+    manifest = _copy_csv(GUIDANCE_MANIFEST_PATH, manifest_path)
+    manifest.loc[:, "is_synthetic"] = "true"
+    manifest.to_csv(manifest_path, index=False)
+
     with pytest.raises(ValueError, match="Synthetic guidance cannot be approved"):
         record_rule_decision(
             RULE_ID,
             decision="approved",
             reviewed_by="anyone",
             review_notes="Must remain blocked",
+            manifest_path=manifest_path,
             dry_run=True,
         )
 
@@ -154,6 +160,7 @@ def test_source_approval_validator_requires_authorized_hash_bound_evidence(tmp_p
 
 def test_source_approval_validator_blocks_manual_synthetic_approval(tmp_path) -> None:
     manifest = validate_guidance_manifest().manifest.copy()
+    manifest.loc[:, "is_synthetic"] = True
     manifest.loc[:, "review_status"] = "approved"
     governance = pd.read_csv(GUIDANCE_GOVERNANCE_PATH, dtype="string", keep_default_na=False)
     approvals = pd.read_csv(GUIDANCE_SOURCE_APPROVALS_PATH, dtype="string", keep_default_na=False)

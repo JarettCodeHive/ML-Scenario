@@ -201,14 +201,14 @@ def test_missing_guidance_registry_is_non_ambiguous(tmp_path: Path) -> None:
 def test_user_facing_guidance_status_labels_are_stable() -> None:
     assert guidance_status_label("favorable") == "Favorable"
     assert guidance_status_label("attention") == "Attention required"
-    assert guidance_status_label("not_available") == "No approved rule applied"
+    assert guidance_status_label("not_available") == "No guidance rule applied"
 
 
 @pytest.mark.parametrize(
     ("error", "candidate_count", "active_count", "applied_count", "expected"),
     [
         ("missing registry", 0, 0, 0, "error"),
-        (None, 6, 0, 0, "unapproved"),
+        (None, 6, 0, 0, "unavailable"),
         (None, 6, 2, 0, "out_of_scope"),
         (None, 6, 2, 2, "applied"),
     ],

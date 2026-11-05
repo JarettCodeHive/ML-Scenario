@@ -29,12 +29,12 @@ def _by_rule(result):
     return {row["rule_id"]: row for row in result["rule_results"]}
 
 
-def test_operational_synthetic_source_remains_unapproved() -> None:
+def test_operational_poc_source_is_registered_for_direct_activation() -> None:
     manifest = pd.read_csv(GUIDANCE_MANIFEST_PATH, dtype="string", keep_default_na=False)
-    synthetic = manifest.loc[manifest.is_synthetic.str.casefold().eq("true")]
+    source = manifest.loc[manifest.source_id.eq("EA-GUIDE-SAMPLE-001")]
 
-    assert not synthetic.empty
-    assert not synthetic.review_status.eq("approved").any()
+    assert len(source) == 1
+    assert source.iloc[0].is_synthetic.casefold() == "false"
     assert all(rule.source_id.startswith("EA-TEST-") for rule in _approved_rules())
 
 

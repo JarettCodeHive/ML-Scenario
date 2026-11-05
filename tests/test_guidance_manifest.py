@@ -11,7 +11,7 @@ def test_repository_guidance_manifest_is_valid() -> None:
 
     assert result.is_valid
     assert result.manifest["source_id"].tolist() == ["EA-GUIDE-SAMPLE-001"]
-    assert result.manifest["is_synthetic"].tolist() == [True]
+    assert result.manifest["is_synthetic"].tolist() == [False]
     assert result.checks["status"].eq("PASS").all()
 
 

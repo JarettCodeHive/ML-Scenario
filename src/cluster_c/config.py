@@ -11,7 +11,7 @@ MODEL_DIR = DATA_DIR / "models" / "cluster_c_term_v1"
 # General EA guidance PDFs and generated guidance artifacts. These paths are
 # independent of the structured term-deal preparation and CatBoost models.
 UNSTRUCTURED_DIR = DATA_DIR / "unstructured"
-GUIDANCE_PDF_DIR = UNSTRUCTURED_DIR / "input" / "guidance" / "pdf"
+GUIDANCE_PDF_DIR = UNSTRUCTURED_DIR / "input"
 GUIDANCE_MANIFEST_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_sources.csv"
 GUIDANCE_APPROVALS_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_rule_approvals.csv"
 GUIDANCE_SOURCE_APPROVALS_PATH = UNSTRUCTURED_DIR / "manifests" / "guidance_source_approvals.csv"
@@ -31,6 +31,18 @@ GUIDANCE_CACHE_DIR = UNSTRUCTURED_DIR / "cache"
 
 RANDOM_SEED = 42
 SOURCE_DATASET_VERSION = os.getenv("SOURCE_DATASET_VERSION", "cluster-c-synthetic-v1-seed42")
+CX_UPSELL_GROUP_VALUES = (
+    "Support Services",
+    "No Upsell Group",
+    "Learning UG",
+    "Professionsal Services",
+)
+XCAT_FLAG_VALUES = ("Y", "N")
+ADDITIONAL_SOURCE_COLUMNS = [
+    "CX_UPSELL_GROUP",
+    "XCAT_FLG",
+    "DV_ATTRIBUTION_CD",
+]
 
 RAW_COLUMNS = [
     "MONETIZATION_TYPE_CD",
@@ -52,4 +64,5 @@ RAW_COLUMNS = [
     "SUITE_NAME",
     "BUSINESS_ENTITY_DESCR",
     "SUB_BUSINESS_ENTITY_DESCR",
+    *ADDITIONAL_SOURCE_COLUMNS,
 ]

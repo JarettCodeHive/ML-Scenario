@@ -7,8 +7,7 @@ This directory currently supports general EA guidance documents only. It does no
 ```text
 data/unstructured/
 |-- input/
-|   `-- guidance/
-|       `-- pdf/          Versioned source guidance PDFs
+|   `-- *.pdf             Source guidance PDFs placed by the user
 |-- manifests/
 |   |-- guidance_sources.csv
 |   |-- guidance_candidate_reviews.csv
@@ -21,25 +20,21 @@ data/unstructured/
 `-- cache/                Regenerable extraction cache
 ```
 
-The included `ea_general_guidance_sample_v1.pdf` is synthetic test guidance. It is not Cisco-approved policy and must not be used as production decision guidance.
+The included `ea_general_guidance_sample_v1.pdf` is generated POC guidance. It is not Cisco policy and should be replaced before production use.
 
-`guidance_sources.csv` is the source-of-truth inventory. Every guidance PDF must have a stable source ID, version, review status, and SHA-256 hash.
+Run the complete POC preparation flow with:
 
-`guidance_rule_approvals.csv` is the human-review registry. An approval is bound to a rule ID, source ID, source version, and exact source SHA-256. Generated candidate rules cannot approve themselves.
+```bash
+PYTHONPATH=src python scripts/prepare_ea_guidance.py
+```
 
-`guidance_source_approvals.csv` retains document-level approval or rejection
-evidence bound to the exact source version and SHA-256. The guarded Phase 6 command
-updates it and the source manifest atomically.
+The command recursively discovers PDFs under `input/`, generates
+`guidance_sources.csv`, calculates source hashes, extracts page text, creates
+controlled rules, activates valid rules directly, and writes the prepared
+artifacts. Users do not need to edit a manifest or run review/approval commands.
 
-`guidance_candidate_reviews.csv` records the Phase 5 source-page comparison and
-is bound to a fingerprint of every extracted candidate field. It cannot override
-candidate values. `guidance_review_policy.csv` records the EA owner's decision on
-lens-status precedence. These reviews are prerequisites to, but not substitutes
-for, individual rule approvals.
-
-`guidance_governance.csv` records source ownership, document authority, permitted uses, retention/access expectations, and lifecycle review. A source cannot activate rules until its governance record is complete and current.
-
-`guidance_compatibility.csv` records the reviewed onboarding method for each source. Automated assessment recommends direct controlled extraction, a controlled companion document, OCR, or rejection; activation requires a technically compatible reviewed choice.
+The review, approval, governance, and compatibility registries are retained only
+for possible future production governance. They do not gate POC activation.
 
 The preparation pipeline creates the following generated files under `prepared/`:
 

@@ -15,8 +15,9 @@ def test_guidance_preparation_extracts_page_provenance() -> None:
     assert result.summary["extracted_source_count"] == 1
     assert result.summary["extracted_page_count"] == 3
     assert result.summary["candidate_rule_count"] == 6
-    assert result.summary["active_rule_count"] == 0
-    assert result.summary["quality_warning_count"] >= 7
+    assert result.summary["active_rule_count"] == 6
+    assert result.summary["activation_mode"] == "direct_poc"
+    assert result.summary["quality_warning_count"] >= 1
     assert result.content["page_number"].tolist() == [1, 2, 3]
     assert result.content["source_id"].nunique() == 1
     assert result.content["source_sha256"].str.len().eq(64).all()
@@ -55,12 +56,18 @@ def test_guidance_preparation_writes_parquet_and_quality_csv(tmp_path) -> None:
     assert not restored_quality.status.eq("FAIL").any()
     assert set(restored_quality.severity) == {"blocking", "review_required", "information"}
     assert restored_rules["candidate_rule_count"] == 6
-    assert restored_rules["active_rule_count"] == 0
-    assert restored_rules["active_rule_ids"] == []
+    assert restored_rules["active_rule_count"] == 6
+    assert set(restored_rules["active_rule_ids"]) == {
+        "GROWTH-G-001",
+        "GROWTH-G-002",
+        "CUSTOMER-CV-001",
+        "CUSTOMER-CV-002",
+        "SIMPLICITY-S-001",
+        "SIMPLICITY-S-002",
+    }
     assert restored_compatibility.loc[0, "format_compatibility"] == "controlled_rules"
     assert bool(restored_compatibility.loc[0, "activation_compatible"])
     assert restored_summary["generated_at_utc"] == result.generated_at_utc.isoformat()
     assert restored_summary["extracted_page_count"] == len(restored_content)
     assert restored_summary["candidate_rule_count"] == restored_rules["candidate_rule_count"]
-    assert len(restored_candidate_review) == restored_rules["candidate_rule_count"]
-    assert not restored_candidate_review["review_complete"].any()
+    assert restored_candidate_review.empty

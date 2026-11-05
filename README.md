@@ -143,125 +143,111 @@ See [MODEL_CARD.md](MODEL_CARD.md) for performance and causal limitations.
 
 ## General EA guidance PDFs
 
-The application can apply reviewed, portfolio-level EA guidance to the Growth, Customer Value, and Simplicity with Scale lenses. This is a deterministic guidance layer after scenario summarisation; it is not part of CatBoost training and does not attach documents to individual subscriptions.
+The application can apply portfolio-level EA guidance to the Growth, Customer Value, and Simplicity with Scale lenses. This is a deterministic guidance layer after scenario summarisation; it is not part of CatBoost training and does not attach documents to individual subscriptions.
 
-Guidance sources and human reviews are stored under:
+For the current POC, every structurally valid rule extracted from a valid registered PDF is activated directly. Candidate-review, governance, rule-approval, and source-approval statuses are not activation gates. The older review registries and approval commands remain in the repository for future controlled-production use, but they are not required to prepare or deploy the POC guidance.
+
+### Guidance quick start
+
+Place one or more controlled-rule PDF files under:
 
 ```text
-data/unstructured/input/guidance/pdf/
+data/unstructured/input/
+```
+
+The repository already includes the generated POC file
+`ea_general_guidance_sample_v1.pdf`.
+
+WSL or Linux:
+
+```bash
+export PYTHONPATH=src
+python scripts/prepare_ea_guidance.py
+```
+
+Windows PowerShell:
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts\prepare_ea_guidance.py
+```
+
+That single command discovers the PDFs, creates or refreshes the source
+manifest, calculates SHA-256 hashes, extracts page text, creates controlled
+rules, activates valid rules directly for the POC, and writes the artifacts
+used by Streamlit. No manual manifest, review, or approval command is required.
+
+Optionally regenerate the included sample PDF before preparation:
+
+```bash
+python scripts/generate_sample_ea_guidance.py
+python scripts/prepare_ea_guidance.py
+```
+
+The generated artifacts are:
+
+```text
 data/unstructured/manifests/guidance_sources.csv
-data/unstructured/manifests/guidance_rule_approvals.csv
-data/unstructured/manifests/guidance_source_approvals.csv
-data/unstructured/manifests/guidance_candidate_reviews.csv
-data/unstructured/manifests/guidance_review_policy.csv
-data/unstructured/manifests/guidance_governance.csv
-data/unstructured/manifests/guidance_compatibility.csv
-```
-
-Prepare guidance independently:
-
-```bash
-PYTHONPATH=src python scripts/prepare_ea_guidance.py
-PYTHONPATH=src python scripts/inspect_ea_guidance.py
-PYTHONPATH=src python scripts/review_ea_guidance.py --initialize
-```
-
-Register a new real source with the guarded onboarding command:
-
-```bash
-PYTHONPATH=src python scripts/register_ea_guidance.py --help
-```
-
-Use `--dry-run` first. Registration requires owners, reviewers, permitted-use confirmation, retention/access terms, and a reviewed onboarding method; it refuses duplicate IDs and never overwrites an existing PDF.
-
-This validates source paths and SHA-256 hashes, extracts PDF pages, creates controlled candidate rules, applies human-approval gates, and writes:
-
-```text
 data/unstructured/prepared/guidance_content.parquet
 data/unstructured/prepared/guidance_rules.json
 data/unstructured/prepared/guidance_quality.csv
 data/unstructured/prepared/guidance_compatibility_report.csv
 data/unstructured/prepared/guidance_preparation_summary.json
-data/unstructured/prepared/guidance_candidate_review_report.csv
 ```
 
-The inspection command checks that all generated artifact counts agree and shows
-source, compatibility, candidate-rule, failure, and warning summaries. It does
-not display PDF page text unless `--show-page-text` is explicitly supplied.
+Changing only a guidance PDF does not require `prepare_data.py` or
+`train_model.py` to be rerun.
 
-Candidate review is hash-bound to the source and every extracted rule field.
-Reviewers confirm page comparison, ambiguity handling, measure/operator, scope,
-and lens-status precedence. Corrections must be made in the controlled source and
-regenerated; the review registry cannot override extracted rule values. Phase 5
-confirmation is required for activation but remains separate from Phase 6 approval.
-
-Record Phase 6 decisions through the guarded command—use `--dry-run` first:
+### Optional guidance inspection
 
 ```bash
-PYTHONPATH=src python scripts/record_ea_guidance_approval.py --help
+python scripts/inspect_ea_guidance.py
 ```
 
-Approved rule reviewers must match the governance registry. Source decisions are
-written atomically to the source manifest and hash-bound source-approval registry.
-Synthetic sources are prevented from being approved.
-
-Controlled acceptance fixtures are isolated under `tests/fixtures/guidance/`.
-They cover every supported rule operator and scope, approved/rejected decisions,
-future and retired sources, hash mismatch, missing measures, and malformed or
-missing registries without approving the operational synthetic PDF. Run:
+Include extracted page text in the diagnostic output with:
 
 ```bash
-PYTHONPATH=src python -m pytest -q tests/test_guidance_acceptance_fixtures.py
+python scripts/inspect_ea_guidance.py --show-page-text
 ```
 
-The Streamlit guidance layer has a lightweight acceptance harness that calls the
-same production lens and traceability renderers without loading the large model
-dataset. Run:
+### Run Streamlit with guidance
+
+After preparing the structured data, training the model, and preparing the PDF
+guidance, start Streamlit normally:
 
 ```bash
-PYTHONPATH=src python -m pytest -q tests/test_guidance_streamlit_acceptance.py
+streamlit run app.py
 ```
 
-Retained evidence is stored in
-`tests/fixtures/guidance/STREAMLIT_ACCEPTANCE_EVIDENCE.md`.
-
-GitHub Actions runs the EA guidance quality gate from
-`.github/workflows/ea-guidance-ci.yml`. Locally, run the same controls with:
+For the included POC PDF, validate the exact six-rule release without starting
+Streamlit:
 
 ```bash
-PYTHONPATH=src python -m pytest -q
-PYTHONPATH=src python scripts/prepare_ea_guidance.py
-PYTHONPATH=src python scripts/validate_ea_guidance_ci.py
+python scripts/deploy_streamlit.py \
+  --application-version poc-v1 \
+  --expected-active-rule-ids "GROWTH-G-001,GROWTH-G-002,CUSTOMER-CV-001,CUSTOMER-CV-002,SIMPLICITY-S-001,SIMPLICITY-S-002" \
+  --warning-policy report \
+  --validate-only
 ```
 
-Warnings are reported by default. Set `GUIDANCE_CI_WARNING_POLICY=fail` for a
-strict release gate. Generated guidance artifacts are recreated and uploaded as
-CI evidence, not committed.
+Remove `--validate-only` to validate the release and start Streamlit. For a
+custom PDF, run `inspect_ea_guidance.py` to obtain its rule IDs and pass that
+exact comma-separated list to `--expected-active-rule-ids`.
 
-Build a deployable guidance release only with an explicit expected rule set:
+Run the optional local guidance checks with:
 
 ```bash
-PYTHONPATH=src python scripts/build_ea_guidance_release.py \
-  --application-version <version> \
-  --expected-active-rule-ids <RULE-1,RULE-2> \
-  --warning-policy fail
+python scripts/validate_ea_guidance_ci.py
+python -m pytest -q tests/test_guidance_streamlit_acceptance.py
 ```
 
-Use `none` explicitly when no active rules are expected. The builder stages and
-validates artifacts, verifies exact active IDs, records release metadata, and
-restores the prior prepared directory if publication fails. Start the application
-through the guarded deployment command:
+### Guidance behavior
 
-```bash
-PYTHONPATH=src python scripts/deploy_streamlit.py \
-  --application-version <version> \
-  --expected-active-rule-ids <RULE-1,RULE-2> \
-  --warning-policy fail
-```
+Guidance is evaluated after model prediction and scenario calculation. It can
+change the displayed Growth, Customer Value, and Simplicity with Scale status,
+but it does not modify CatBoost predictions or the underlying financial KPIs.
 
-A rule becomes active only when its exact source version/hash and its individual approval record are approved with reviewer evidence, and its source has complete ownership, authority, permitted-use, retention/access, and current lifecycle governance. The included synthetic PDF remains unapproved and produces no active rules.
-
-Rules are global unless the controlled PDF contains an optional scope such as:
+Rules are global unless the controlled PDF contains an optional scope:
 
 ```text
 Scope: SCMS=ENTERPRISE
@@ -269,19 +255,9 @@ Scope: SALES_LEVEL_2=EMEA_NORTH
 Scope: SUITE_NAME=Cisco DNA Wireless
 ```
 
-A scoped rule applies only when that UI filter is exclusively selected. Guidance changes do not require `prepare_data.py` or `train_model.py` to be rerun. See [EA_GUIDANCE_NEXT_STEPS.md](EA_GUIDANCE_NEXT_STEPS.md) for implementation and governance details.
-
-Compatibility assessment classifies each source as controlled text, free-form text, OCR-required, or unsupported. The reviewed onboarding choice must be recorded as one of:
-
-```text
-direct_controlled_pdf
-controlled_companion_pdf
-manual_rule_registry
-ocr_required
-rejected
-```
-
-Only `direct_controlled_pdf` is currently eligible for automatic rule activation. Other choices document the required remediation or onboarding path.
+A scoped rule applies only when that UI filter is exclusively selected. See
+[EA_GUIDANCE_NEXT_STEPS.md](EA_GUIDANCE_NEXT_STEPS.md) for implementation details
+and the controls that would be required before a production rollout.
 
 ## Revenue-stability proxy
 

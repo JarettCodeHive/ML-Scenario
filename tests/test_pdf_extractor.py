@@ -9,7 +9,7 @@ from cluster_c.unstructured.pdf_extractor import PdfExtractionError, extract_pdf
 ROOT = Path(__file__).resolve().parents[1]
 SAMPLE_PDF = (
     ROOT
-    / "data/unstructured/input/guidance/pdf/ea_general_guidance_sample_v1.pdf"
+    / "data/unstructured/input/ea_general_guidance_sample_v1.pdf"
 )
 
 

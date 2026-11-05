@@ -11,13 +11,9 @@ from pathlib import Path
 from tempfile import mkdtemp
 from typing import Callable
 
-import pandas as pd
-
 from cluster_c.config import (
-    GUIDANCE_APPROVALS_PATH,
     GUIDANCE_PREPARED_DIR,
     GUIDANCE_RELEASE_METADATA_PATH,
-    GUIDANCE_SOURCE_APPROVALS_PATH,
     MODEL_DIR,
     PREPARED_DIR,
 )
@@ -82,26 +78,6 @@ def publish_prepared_directory(
             shutil.rmtree(backup_dir)
 
 
-def _approval_identities(active_rules, rule_approvals_path: Path, source_approvals_path: Path) -> dict[str, list[str]]:
-    active_ids = {rule.rule_id for rule in active_rules}
-    active_sources = {rule.source_id for rule in active_rules}
-    rule_approvals = pd.read_csv(rule_approvals_path, dtype="string", keep_default_na=False)
-    source_approvals = pd.read_csv(source_approvals_path, dtype="string", keep_default_na=False)
-    rule_reviewers = sorted(set(
-        rule_approvals.loc[
-            rule_approvals.rule_id.isin(active_ids) & rule_approvals.review_status.eq("approved"),
-            "reviewed_by",
-        ].loc[lambda values: values.ne("")]
-    ))
-    source_reviewers = sorted(set(
-        source_approvals.loc[
-            source_approvals.source_id.isin(active_sources) & source_approvals.review_status.eq("approved"),
-            "reviewed_by",
-        ].loc[lambda values: values.ne("")]
-    ))
-    return {"rule_reviewers": rule_reviewers, "source_reviewers": source_reviewers}
-
-
 def build_guidance_release(
     *,
     application_version: str,
@@ -110,8 +86,6 @@ def build_guidance_release(
     prepared_dir: Path = GUIDANCE_PREPARED_DIR,
     model_metadata_path: Path = MODEL_DIR / "metadata.json",
     preparation_summary_path: Path = PREPARED_DIR / "preparation_summary.json",
-    rule_approvals_path: Path = GUIDANCE_APPROVALS_PATH,
-    source_approvals_path: Path = GUIDANCE_SOURCE_APPROVALS_PATH,
     deployment_time: datetime | None = None,
 ) -> dict:
     """Stage, validate, publish, and describe one guidance release bundle."""
@@ -185,11 +159,7 @@ def build_guidance_release(
             "warning_policy": warning_policy,
             "quality_warning_count": len(warnings),
             "quality_failure_count": len(failures),
-            "approver_identities": _approval_identities(
-                registry.active_rules,
-                rule_approvals_path,
-                source_approvals_path,
-            ),
+            "guidance_activation_mode": "direct_poc",
             "guidance_artifact_sha256": artifact_hashes,
             "deployment_time_utc": deployment_time.isoformat(),
         }
