@@ -12,7 +12,12 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from cluster_c.config import RAW_COLUMNS
+from cluster_c.config import (
+    ADDITIONAL_SOURCE_COLUMNS,
+    CX_UPSELL_GROUP_VALUES,
+    RAW_COLUMNS,
+    XCAT_FLAG_VALUES,
+)
 
 LOGGER = logging.getLogger("generate_large_input")
 DEFAULT_TEMPLATE = Path("data/input/term_deals copy.csv")
@@ -83,6 +88,12 @@ def generated_row(
         annualized *= -1
     row["ANNUALIZED_NET_PRICE_USD_AMT"] = f"{annualized:.10f}"
     row["BOOKINGS_NET_PRICE_USD_AMT"] = f"{annualized * years:.10f}"
+    row["CX_UPSELL_GROUP"] = rng.choice(CX_UPSELL_GROUP_VALUES)
+    row["XCAT_FLG"] = rng.choice(XCAT_FLAG_VALUES)
+    dv_attribution = rng.uniform(-100.0, 100.0)
+    if abs(dv_attribution) < 0.000001:
+        dv_attribution = 0.000001
+    row["DV_ATTRIBUTION_CD"] = f"{dv_attribution:.6f}"
     return row
 
 
@@ -98,9 +109,10 @@ def generate(template_path: Path, output_path: Path, target_bytes: int, seed: in
         fieldnames = reader.fieldnames or []
     if not templates:
         raise ValueError(f"Template has no data rows: {template_path}")
-    missing = sorted(set(RAW_COLUMNS) - set(fieldnames))
+    missing = sorted((set(RAW_COLUMNS) - set(ADDITIONAL_SOURCE_COLUMNS)) - set(fieldnames))
     if missing:
         raise ValueError(f"Template is missing required columns: {missing}")
+    fieldnames = [*fieldnames, *(column for column in ADDITIONAL_SOURCE_COLUMNS if column not in fieldnames)]
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_name(f".{output_path.name}.tmp")

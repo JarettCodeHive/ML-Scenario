@@ -1,0 +1,7 @@
+rule_id,source_id,source_version,source_sha256,review_status,reviewed_by,reviewed_at_utc,review_notes
+GROWTH-G-001,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use
+GROWTH-G-002,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use
+CUSTOMER-CV-001,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use
+CUSTOMER-CV-002,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use
+SIMPLICITY-S-001,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use
+SIMPLICITY-S-002,EA-GUIDE-SAMPLE-001,v1,c1c07722a93f19d9d0f5f886878a01c40f20a7d6dc00c86e1d9d69e33a0ea3da,in_review,,,Synthetic sample; not approved for decision use

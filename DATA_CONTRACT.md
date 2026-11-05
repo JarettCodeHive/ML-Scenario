@@ -70,3 +70,93 @@ The supplied columns support commitment and contracted-value stability modelling
 - Approval touches and operational cost
 
 Until those fields are available, the UI must not claim renewal improvement, churn reduction, cash-flow impact, invoice cost, or causal customer acceptance.
+
+## General EA guidance PDF contract
+
+General EA guidance is a separate portfolio-level input and is not joined to `term_deals.csv`. It does not require `SUBSCRIPTION_REFERENCE_ID` or another deal identifier.
+
+Text-based guidance PDFs must be placed under:
+
+```text
+data/unstructured/input/guidance/pdf/
+```
+
+The preferred onboarding path is `scripts/register_ea_guidance.py`. It generates a versioned filename, prevents overwrite, calculates SHA-256, and appends coordinated source, governance, and compatibility records. A newly registered real source always starts as `in_review`.
+
+Every source requires an entry in `data/unstructured/manifests/guidance_sources.csv` with:
+
+```text
+source_id
+source_path
+source_type
+guidance_type
+title
+version
+effective_date
+review_status
+is_synthetic
+sha256
+```
+
+Source paths must be repository-relative and remain inside the approved PDF directory. The SHA-256 must match the file exactly. Changing a PDF requires a new hash and review; previous hash-bound rule approvals no longer match.
+
+Allowed source review statuses are:
+
+```text
+not_approved
+in_review
+approved
+retired
+rejected
+```
+
+Candidate rules require a matching record in `data/unstructured/manifests/guidance_rule_approvals.csv`. An approved rule must record the reviewer and review timestamp. A rule is active only when the source and rule are both approved, the hashes and versions match, and the source effective date has been reached.
+
+Every source also requires a record in `data/unstructured/manifests/guidance_governance.csv`. Production activation requires:
+
+- Business owner
+- Technical/model owner
+- Authorized rule reviewer and backup reviewer
+- Source repository and governance contact
+- Approved authority status with confirmer and timestamp
+- Explicit permission for storage, text extraction, rule derivation, and Streamlit reference
+- Retention policy and access requirements
+- Valid retirement/supersession details
+- Positive review frequency and current authority review
+
+Draft and in-review sources may be extracted for review, but incomplete governance prevents their rules from becoming active.
+
+Every source also requires an onboarding decision in `data/unstructured/manifests/guidance_compatibility.csv`:
+
+```text
+source_id
+selected_onboarding_method
+assessed_by
+assessed_at_utc
+assessment_notes
+```
+
+Allowed methods are:
+
+```text
+direct_controlled_pdf
+controlled_companion_pdf
+manual_rule_registry
+ocr_required
+rejected
+```
+
+The automated compatibility report records PDF readability, page count, extracted character count, controlled-rule count, format classification, recommended method, reviewed selection, and activation compatibility. The current runtime activates automatically extracted rules only from reviewed `direct_controlled_pdf` sources. Free-form documents require a controlled companion or separately governed manual rule process; image-only documents require a future OCR implementation.
+
+Controlled PDF rules support global scope or one optional portfolio filter:
+
+```text
+Scope: global
+Scope: SCMS=ENTERPRISE
+Scope: SALES_LEVEL_2=EMEA_NORTH
+Scope: SUITE_NAME=Cisco DNA Wireless
+```
+
+No other scope columns are accepted. Segment scope filters portfolio interpretation and does not associate guidance with individual subscriptions.
+
+The current extractor supports normal text-based PDFs. Encrypted, corrupt, empty, and image-only PDFs fail preparation with an explicit quality status. OCR is not currently enabled.

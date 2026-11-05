@@ -11,7 +11,15 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from .config import PREPARED_DIR, PREPARED_FEATURE_PATH, RAW_COLUMNS, SOURCE_DATASET_VERSION
+from .config import (
+    ADDITIONAL_SOURCE_COLUMNS,
+    CX_UPSELL_GROUP_VALUES,
+    PREPARED_DIR,
+    PREPARED_FEATURE_PATH,
+    RAW_COLUMNS,
+    SOURCE_DATASET_VERSION,
+    XCAT_FLAG_VALUES,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,6 +123,27 @@ def validate(frame: pd.DataFrame) -> pd.DataFrame:
     add("subscription_id_present_unique", int(frame["SUBSCRIPTION_REFERENCE_ID"].isna().sum() + frame["SUBSCRIPTION_REFERENCE_ID"].duplicated().sum()), "Subscription reference must be present and unique")
     critical = ["SUBSCRIPTION_REFERENCE_ID", "TERM_BUCKET", "CAV_END_CUSTOMER_BU_ID", "TERM_START_DATE", "TERM_END_DATE", TARGET]
     add("critical_values_present", int(frame[critical].isna().sum().sum()), "Critical identifiers, term fields, dates, and bookings must be populated")
+    add(
+        "additional_attributes_present",
+        int(frame[ADDITIONAL_SOURCE_COLUMNS].isna().sum().sum()),
+        "CX_UPSELL_GROUP, XCAT_FLG, and DV_ATTRIBUTION_CD must be populated",
+    )
+    add(
+        "known_cx_upsell_group",
+        int((~frame["CX_UPSELL_GROUP"].isin(CX_UPSELL_GROUP_VALUES)).sum()),
+        "CX_UPSELL_GROUP must use a supported value",
+    )
+    add(
+        "known_xcat_flag",
+        int((~frame["XCAT_FLG"].isin(XCAT_FLAG_VALUES)).sum()),
+        "XCAT_FLG must be Y or N",
+    )
+    attribution = pd.to_numeric(frame["DV_ATTRIBUTION_CD"], errors="coerce")
+    add(
+        "valid_dv_attribution",
+        int(attribution.isna().sum() + (~np.isfinite(attribution.fillna(0))).sum()),
+        "DV_ATTRIBUTION_CD must contain finite positive or negative numbers",
+    )
     start = pd.to_datetime(frame["TERM_START_DATE"], errors="coerce")
     end = pd.to_datetime(frame["TERM_END_DATE"], errors="coerce")
     add("valid_dates", int(start.isna().sum() + end.isna().sum() + (end < start).sum()), "Term dates must parse and end after start")
