@@ -4,3 +4,6 @@ pandas==3.1.0
 plotly==6.9.0
 streamlit==1.66.1
 pytest==9.2.0
+scikit-learn>=1.5
+xgboost>=2.1
+lightgbm>=4.5
