@@ -61,11 +61,6 @@ def generate_term_deals(seed: int = RANDOM_SEED, row_count: int = 5000) -> pd.Da
         fiscal_month = (start.month - 8) % 12 + 1
         fiscal_quarter = (fiscal_month - 1) // 3 + 1
         business_entity, sub_business = SUITES[suite]
-        cx_upsell_group = str(rng.choice(CX_UPSELL_GROUP_VALUES))
-        xcat_flag = str(rng.choice(XCAT_FLAG_VALUES))
-        dv_attribution = float(rng.uniform(-100.0, 100.0))
-        if abs(dv_attribution) < 0.000001:
-            dv_attribution = 0.000001
         rows.append(
             {
                 "MONETIZATION_TYPE_CD": monetization,
@@ -87,13 +82,32 @@ def generate_term_deals(seed: int = RANDOM_SEED, row_count: int = 5000) -> pd.Da
                 "SUITE_NAME": suite,
                 "BUSINESS_ENTITY_DESCR": business_entity,
                 "SUB_BUSINESS_ENTITY_DESCR": sub_business,
-                "CX_UPSELL_GROUP": cx_upsell_group,
-                "XCAT_FLG": xcat_flag,
-                "DV_ATTRIBUTION_CD": round(dv_attribution, 6),
                 "DATASET_VERSION": SOURCE_DATASET_VERSION,
             }
         )
-    return pd.DataFrame(rows).sort_values("SUBSCRIPTION_REFERENCE_ID").reset_index(drop=True)
+    frame = pd.DataFrame(rows)
+    _add_additional_source_columns(frame, seed)
+    return frame.sort_values("SUBSCRIPTION_REFERENCE_ID").reset_index(drop=True)
+
+
+def _add_additional_source_columns(frame: pd.DataFrame, seed: int) -> None:
+    """Add CX_UPSELL_GROUP, XCAT_FLG and DV_ATTRIBUTION_CD to every deal.
+
+    These columns use their OWN random stream (seeded from ``seed``), separate
+    from the main deal generator. Drawing them inside the main loop would shift
+    every later random draw and silently change all existing deals (customers,
+    terms, bookings), which would no longer match the committed sample data and
+    trained models. With a separate stream the original 20 columns stay exactly
+    the same and the three new columns are still deterministic for a seed.
+    """
+    extra_rng = np.random.default_rng([seed, 1])
+    row_count = len(frame)
+    frame["CX_UPSELL_GROUP"] = extra_rng.choice(CX_UPSELL_GROUP_VALUES, size=row_count)
+    frame["XCAT_FLG"] = extra_rng.choice(XCAT_FLAG_VALUES, size=row_count)
+    attribution = extra_rng.uniform(-100.0, 100.0, size=row_count)
+    # Keep values non-zero, as the data contract expects positive or negative numbers.
+    attribution = np.where(np.abs(attribution) < 0.000001, 0.000001, attribution)
+    frame["DV_ATTRIBUTION_CD"] = np.round(attribution, 6)
 
 
 def write_term_deals(frame: pd.DataFrame, path=INPUT_PATH) -> None:
