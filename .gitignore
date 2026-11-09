@@ -33,4 +33,4 @@ data/unstructured/prepared/*
 !data/unstructured/prepared/.gitkeep
 
 # Generated structured-data feature artifacts
-data/prepared/term_model_features.parquet
+data/prepared/
