@@ -1,0 +1,63 @@
+name: EA guidance CI
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guidance-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PYTHONPATH: src
+      GUIDANCE_CI_WARNING_POLICY: ${{ vars.GUIDANCE_CI_WARNING_POLICY || 'report' }}
+      RUN_FULL_APP_TEST: "0"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install dependencies
+        run: python -m pip install --requirement requirements.txt
+
+      - name: Run automated tests
+        run: python -m pytest -q
+
+      - name: Prepare EA guidance artifacts
+        run: python scripts/prepare_ea_guidance.py
+
+      - name: Validate blocking checks and deterministic regeneration
+        run: python scripts/validate_ea_guidance_ci.py
+
+      - name: Verify generated guidance artifacts remain ignored
+        shell: bash
+        run: |
+          git check-ignore data/unstructured/prepared/guidance_rules.json
+          tracked="$(git ls-files data/unstructured/prepared data/unstructured/cache | grep -vE '/\.gitkeep$' || true)"
+          if [[ -n "$tracked" ]]; then
+            echo "Generated guidance artifacts must not be tracked:"
+            echo "$tracked"
+            exit 1
+          fi
+
+      - name: Retain guidance quality evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: ea-guidance-quality-${{ github.run_id }}
+          if-no-files-found: error
+          path: |
+            data/unstructured/prepared/guidance_quality.csv
+            data/unstructured/prepared/guidance_preparation_summary.json
+            data/unstructured/prepared/guidance_compatibility_report.csv
+            data/unstructured/prepared/guidance_candidate_review_report.csv
+            data/unstructured/prepared/guidance_rules.json

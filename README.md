@@ -32,6 +32,7 @@ The supplied CSV does not contain renewal, churn, acceptance, invoice, or operat
 - Python
 - Pandas and NumPy
 - CatBoost
+- pypdf
 - Streamlit
 - Plotly
 - pytest
@@ -104,6 +105,22 @@ streamlit run app.py
 
 The filename remains constant for every delivery. The dataset-version label changes for each new or corrected delivery and is stored in the prepared data and model metadata for traceability.
 
+Preparation writes model features to `data/prepared/term_model_features.parquet` using Snappy compression. The source input remains CSV, while quality checks and source profiles remain CSV for direct review.
+
+Prepared fiscal, term, and history-count fields use compact nullable integer types; categorical model fields use dictionary encoding; and derived history averages use `float32`. Raw bookings and annualized financial amounts remain `float64`. CatBoost numeric matrices and labels use `float32` to reduce Pool memory.
+
+By default, training uses the complete chronological training split. To reduce runtime or memory for development, set an optional deterministic sampling cap. Sampling preserves fiscal-year, term, segment, and suite representation; validation and test splits remain complete:
+
+```bash
+# Use a different training cap
+export TRAINING_SAMPLE_ROWS=500000
+
+# Explicitly use the default complete training split
+export TRAINING_SAMPLE_ROWS=all
+```
+
+On Windows PowerShell, use `$env:TRAINING_SAMPLE_ROWS = "500000"` or `$env:TRAINING_SAMPLE_ROWS = "all"`.
+
 Preparation currently records invalid critical keys, dates, term values, and financial targets as non-blocking warnings in `data/prepared/quality_checks.csv`. A missing required column still stops preparation. Training requires at least three distinct non-null term start dates. Sparse dates or missing 1-, 3-, or 5-year examples within a chronological split produce warnings because the resulting evaluation metrics are not statistically reliable.
 
 ## Optional: regenerate deterministic sample data
@@ -154,6 +171,123 @@ streamlit run app.py        # then open "Model Comparison" in the left sidebar
 ```
 
 Results go to `data/models/model_comparison/`. This is evaluation only; the scenario page still uses the CatBoost models in `data/models/cluster_c_term_v1/`. XGBoost and LightGBM are skipped automatically if they are not installed.
+## General EA guidance PDFs
+
+The application can apply portfolio-level EA guidance to the Growth, Customer Value, and Simplicity with Scale lenses. This is a deterministic guidance layer after scenario summarisation; it is not part of CatBoost training and does not attach documents to individual subscriptions.
+
+For the current POC, every structurally valid rule extracted from a valid registered PDF is activated directly. Candidate-review, governance, rule-approval, and source-approval statuses are not activation gates. The older review registries and approval commands remain in the repository for future controlled-production use, but they are not required to prepare or deploy the POC guidance.
+
+### Guidance quick start
+
+Place one or more controlled-rule PDF files under:
+
+```text
+data/unstructured/input/
+```
+
+The repository already includes the generated POC file
+`ea_general_guidance_sample_v1.pdf`.
+
+WSL or Linux:
+
+```bash
+export PYTHONPATH=src
+python scripts/prepare_ea_guidance.py
+```
+
+Windows PowerShell:
+
+```powershell
+$env:PYTHONPATH = "src"
+python scripts\prepare_ea_guidance.py
+```
+
+That single command discovers the PDFs, creates or refreshes the source
+manifest, calculates SHA-256 hashes, extracts page text, creates controlled
+rules, activates valid rules directly for the POC, and writes the artifacts
+used by Streamlit. No manual manifest, review, or approval command is required.
+
+Optionally regenerate the included sample PDF before preparation:
+
+```bash
+python scripts/generate_sample_ea_guidance.py
+python scripts/prepare_ea_guidance.py
+```
+
+The generated artifacts are:
+
+```text
+data/unstructured/manifests/guidance_sources.csv
+data/unstructured/prepared/guidance_content.parquet
+data/unstructured/prepared/guidance_rules.json
+data/unstructured/prepared/guidance_quality.csv
+data/unstructured/prepared/guidance_compatibility_report.csv
+data/unstructured/prepared/guidance_preparation_summary.json
+```
+
+Changing only a guidance PDF does not require `prepare_data.py` or
+`train_model.py` to be rerun.
+
+### Optional guidance inspection
+
+```bash
+python scripts/inspect_ea_guidance.py
+```
+
+Include extracted page text in the diagnostic output with:
+
+```bash
+python scripts/inspect_ea_guidance.py --show-page-text
+```
+
+### Run Streamlit with guidance
+
+After preparing the structured data, training the model, and preparing the PDF
+guidance, start Streamlit normally:
+
+```bash
+streamlit run app.py
+```
+
+For the included POC PDF, validate the exact six-rule release without starting
+Streamlit:
+
+```bash
+python scripts/deploy_streamlit.py \
+  --application-version poc-v1 \
+  --expected-active-rule-ids "GROWTH-G-001,GROWTH-G-002,CUSTOMER-CV-001,CUSTOMER-CV-002,SIMPLICITY-S-001,SIMPLICITY-S-002" \
+  --warning-policy report \
+  --validate-only
+```
+
+Remove `--validate-only` to validate the release and start Streamlit. For a
+custom PDF, run `inspect_ea_guidance.py` to obtain its rule IDs and pass that
+exact comma-separated list to `--expected-active-rule-ids`.
+
+Run the optional local guidance checks with:
+
+```bash
+python scripts/validate_ea_guidance_ci.py
+python -m pytest -q tests/test_guidance_streamlit_acceptance.py
+```
+
+### Guidance behavior
+
+Guidance is evaluated after model prediction and scenario calculation. It can
+change the displayed Growth, Customer Value, and Simplicity with Scale status,
+but it does not modify CatBoost predictions or the underlying financial KPIs.
+
+Rules are global unless the controlled PDF contains an optional scope:
+
+```text
+Scope: SCMS=ENTERPRISE
+Scope: SALES_LEVEL_2=EMEA_NORTH
+Scope: SUITE_NAME=Cisco DNA Wireless
+```
+
+A scoped rule applies only when that UI filter is exclusively selected. See
+[EA_GUIDANCE_NEXT_STEPS.md](EA_GUIDANCE_NEXT_STEPS.md) for implementation details
+and the controls that would be required before a production rollout.
 
 ## Revenue-stability proxy
 
@@ -179,11 +313,13 @@ The UI compares coverage volatility and renewal-decision points over five years.
 ├── requirements.txt
 ├── data/
 │   ├── input/term_deals.csv
+│   ├── unstructured/
 │   ├── prepared/
 │   └── models/cluster_c_term_v1/
 ├── scripts/
 │   ├── generate_sample_data.py
 │   ├── prepare_data.py
+│   ├── prepare_ea_guidance.py
 │   ├── train_model.py
 │   └── compare_models.py
 ├── src/cluster_c/
@@ -191,7 +327,8 @@ The UI compares coverage volatility and renewal-decision points over five years.
 │   ├── preparation.py
 │   ├── model.py
 │   ├── model_comparison.py
-│   └── scenario.py
+│   ├── scenario.py
+│   └── unstructured/
 └── tests/
 ```
 

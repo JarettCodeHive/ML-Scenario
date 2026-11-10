@@ -13,6 +13,8 @@ import streamlit as st
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / "src"))
 
+from cluster_c.config import GUIDANCE_RULES_PATH, PREPARED_FEATURE_PATH  # noqa: E402
+from cluster_c.guidance_streamlit import render_guidance_traceability, render_lens_guidance  # noqa: E402
 from cluster_c.model import predict_term_options  # noqa: E402
 from cluster_c.scenario import (  # noqa: E402
     annual_coverage,
@@ -20,6 +22,12 @@ from cluster_c.scenario import (  # noqa: E402
     calculate_scenario,
     sensitivity,
     summarise,
+)
+from cluster_c.ui import apply_portfolio_filters, filter_options  # noqa: E402
+from cluster_c.unstructured.decision_rules import (  # noqa: E402
+    GuidanceRegistryError,
+    evaluate_guidance,
+    load_guidance_registry,
 )
 
 st.set_page_config(page_title="Cisco EA Cluster C ML Scenario", page_icon="📅", layout="wide")
@@ -32,14 +40,14 @@ def money(value: float) -> str:
 
 @st.cache_data
 def load_scored() -> tuple[pd.DataFrame, dict, pd.DataFrame]:
-    feature_path = ROOT / "data/prepared/term_model_features.csv"
+    feature_path = PREPARED_FEATURE_PATH
     model_dir = ROOT / "data/models/cluster_c_term_v1"
     required = [feature_path, model_dir / "metadata.json", model_dir / "metrics.csv"]
-    required += [model_dir / name for name in ("bookings_point.cbm", "bookings_lower_10.cbm", "bookings_upper_90.cbm")]
+    required += [model_dir / name for name in ("bookings_point.cbm", "bookings_interval_10_90.cbm")]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.exists()]
     if missing:
         raise FileNotFoundError("Missing artifacts: " + ", ".join(missing))
-    frame = pd.read_csv(feature_path, parse_dates=["TERM_START_DATE", "TERM_END_DATE"])
+    frame = pd.read_parquet(feature_path, engine="pyarrow")
     predictions = predict_term_options(frame, model_dir)
     # Predictions are returned in the same row order as the feature frame.
     # Position-based attachment keeps diagnostic rows with duplicate or null
@@ -49,6 +57,13 @@ def load_scored() -> tuple[pd.DataFrame, dict, pd.DataFrame]:
     metadata = json.loads((model_dir / "metadata.json").read_text(encoding="utf-8"))
     metrics = pd.read_csv(model_dir / "metrics.csv")
     return frame, metadata, metrics
+
+
+@st.cache_data
+def load_guidance_registry_cached(path: str, modified_ns: int):
+    """Cache the small rule registry while invalidating on file changes."""
+    del modified_ns
+    return load_guidance_registry(Path(path))
 
 
 st.title("Cisco EA — ML Scenario")
@@ -73,19 +88,16 @@ except (FileNotFoundError, ValueError) as exc:
     st.stop()
 
 f1, f2, f3 = st.columns(3)
-sales_levels = f1.multiselect("Sales level 2", sorted(scored["SALES_LEVEL_2"].unique()), placeholder="All")
-segments = f2.multiselect("SCMS", sorted(scored["SCMS"].unique()), placeholder="All")
-suites = f3.multiselect("Suite", sorted(scored["SUITE_NAME"].unique()), placeholder="All")
+sales_levels = f1.multiselect("Sales level 2", filter_options(scored["SALES_LEVEL_2"]), placeholder="All")
+segments = f2.multiselect("SCMS", filter_options(scored["SCMS"]), placeholder="All")
+suites = f3.multiselect("Suite", filter_options(scored["SUITE_NAME"]), placeholder="All")
 
 l1, l2, l3 = st.columns(3)
 adoption = l1.slider("Deals using flexible terms", 0, 100, 100, 5, format="%d%%")
 five_share = l2.slider("Five-year share of flexible deals", 0, 100, 50, 5, format="%d%%")
 discount_rate = l3.slider("Annual discount rate", 0, 20, 8, 1, format="%d%%")
 
-scope = scored.copy()
-if sales_levels: scope = scope[scope.SALES_LEVEL_2.isin(sales_levels)]
-if segments: scope = scope[scope.SCMS.isin(segments)]
-if suites: scope = scope[scope.SUITE_NAME.isin(suites)]
+scope = apply_portfolio_filters(scored, sales_levels, segments, suites)
 if scope.empty:
     st.info("No rows match the selected scope.")
     st.stop()
@@ -95,6 +107,31 @@ coverage = annual_coverage(details, adoption, five_share)
 summary = summarise(details, coverage)
 sensitivity_frame = sensitivity(scope, adoption, discount_rate)
 breakeven = breakeven_share(sensitivity_frame)
+
+guidance_error = None
+try:
+    guidance_registry = load_guidance_registry_cached(
+        str(GUIDANCE_RULES_PATH),
+        GUIDANCE_RULES_PATH.stat().st_mtime_ns,
+    )
+except (FileNotFoundError, GuidanceRegistryError, OSError) as exc:
+    guidance_registry = None
+    guidance_error = str(exc)
+
+guidance_evaluation = evaluate_guidance(
+    summary,
+    {
+        "flexible_adoption_pct": adoption,
+        "five_year_share_pct": five_share,
+        "discount_rate_pct": discount_rate,
+    },
+    guidance_registry.active_rules if guidance_registry else [],
+    {
+        "SALES_LEVEL_2": sales_levels,
+        "SCMS": segments,
+        "SUITE_NAME": suites,
+    },
+)
 
 st.caption(
     f"Model {metadata['model_version']} · {summary['deals']:,} eligible deals · "
@@ -113,17 +150,20 @@ with g.container(border=True):
     st.metric("Expected commitment change", money(summary["commitment_change"]), delta=f"{summary['commitment_change_pct']:+.1f}%")
     st.metric("Experimental P10–P90 scenario range", f"{money(summary['scenario_p10'])} – {money(summary['scenario_p90'])}")
     st.caption("Modelled total bookings commitment; range is not yet calibrated on Cisco data.")
+    render_lens_guidance(guidance_evaluation, "growth")
 with v.container(border=True):
     st.markdown("#### 2. Customer value")
     st.metric("Flexible deals", f"{adoption}%", delta=f"{100 - five_share}% one-year · {five_share}% five-year", delta_color="off")
     st.metric("Average expected term", f"{summary['average_term_years']:.2f} years")
     st.caption("Choice and term length proxy only. Renewal, churn, satisfaction, and acceptance are not predicted.")
+    render_lens_guidance(guidance_evaluation, "customer_value")
 with s.container(border=True):
     st.markdown("#### 3. Simplicity with scale")
     renewal_change = summary["scenario_renewal_points"] - summary["baseline_renewal_points"]
     st.metric("Five-year renewal decision points", f"{summary['scenario_renewal_points']:,.0f}", delta=f"{renewal_change:+,.0f} vs baseline", delta_color="inverse")
     st.metric("Five-year coverage volatility", f"{summary['scenario_coverage_cv_pct']:.1f}%", delta=f"{summary['scenario_coverage_cv_pct'] - summary['baseline_coverage_cv_pct']:+.1f} pts", delta_color="inverse")
     st.caption("Operational and stability proxies; actual approval effort and operating cost are unavailable.")
+    render_lens_guidance(guidance_evaluation, "simplicity_with_scale")
 
 chart1, chart2 = st.columns(2)
 coverage_long = coverage.melt("portfolio_year", var_name="case", value_name="contracted_value_coverage")
@@ -150,6 +190,8 @@ display = details[[
 ]].copy()
 st.dataframe(display, width="stretch", hide_index=True)
 st.download_button("Download scenario CSV", display.to_csv(index=False).encode("utf-8"), "cluster_c_term_scenario.csv", "text/csv")
+
+render_guidance_traceability(guidance_error, guidance_registry, guidance_evaluation)
 
 with st.expander("Model performance, overlap, and limitations"):
     st.dataframe(model_metrics[model_metrics.split == "test"], width="stretch", hide_index=True)
