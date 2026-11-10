@@ -9,6 +9,8 @@ A standalone local proof of concept aligned to the EA Lever Modelling Scope v4:
 
 The project contains only this scenario: synthetic -shaped data, quality checks, point-in-time feature preparation, local CatBoost training, deterministic portfolio calculations, and a one-page Streamlit decision view.
 
+> **Quick start:** see [RUNNING.md](RUNNING.md) for step-by-step run commands (Windows and macOS) and what every pytest checks.
+
 ## PPT alignment
 
 The UI follows the PPT decision structure:
@@ -36,6 +38,95 @@ The supplied CSV does not contain renewal, churn, acceptance, invoice, or operat
 - pytest
 
 Everything runs locally. No credentials, Snowflake connection, LLM, or cloud model API is used.
+
+## Windows Command Prompt (cmd) commands
+
+The command blocks further down use macOS/Linux (bash) syntax. On Windows, run the
+equivalents below in **Command Prompt** (in VS Code: **Terminal → New Terminal**; the
+prompt looks like `C:\...>`, not `PS C:\...>`). Run every command from the project
+folder that contains `app.py`.
+
+| bash (macOS / Linux) | Windows Command Prompt |
+|---|---|
+| `python3 -m venv .venv` | `python -m venv .venv` |
+| `source .venv/bin/activate` | `.venv\Scripts\activate` |
+| `export PYTHONPATH=src` or `PYTHONPATH=src python ...` | `set PYTHONPATH=src` (once per terminal), then `python ...` |
+| `export SOURCE_DATASET_VERSION="..."` | `set SOURCE_DATASET_VERSION=...` (no quotes) |
+| `export TRAINING_SAMPLE_ROWS=500000` | `set TRAINING_SAMPLE_ROWS=500000` |
+| `scripts/name.py` | `scripts\name.py` |
+| `\` at the end of a line (continue the command) | `^` |
+
+`set` values last only for the current terminal window. In a new terminal, run
+`.venv\Scripts\activate` and `set PYTHONPATH=src` again. If you see
+`ModuleNotFoundError: No module named 'cluster_c'`, `PYTHONPATH` is not set.
+
+### One-time setup
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Every new terminal
+
+```bat
+.venv\Scripts\activate
+set PYTHONPATH=src
+```
+
+### Run the full workflow
+
+```bat
+python scripts\generate_sample_data.py
+python scripts\prepare_data.py
+python scripts\train_model.py
+python scripts\prepare_ea_guidance.py
+python -m pytest -q
+streamlit run app.py
+```
+
+`generate_sample_data.py` is only needed to rebuild the synthetic sample
+(`data\input\term_deals.csv`); skip it when using a real data extract.
+
+### Use a new data extract
+
+```bat
+set SOURCE_DATASET_VERSION=cisco-cluster-c-20261030-v1
+python scripts\prepare_data.py
+python scripts\train_model.py
+python -m pytest -q
+streamlit run app.py
+```
+
+Optional training sample cap: `set TRAINING_SAMPLE_ROWS=500000` or `set TRAINING_SAMPLE_ROWS=all`.
+
+### EA guidance PDFs
+
+```bat
+python scripts\generate_sample_ea_guidance.py
+python scripts\prepare_ea_guidance.py
+python scripts\inspect_ea_guidance.py
+python scripts\inspect_ea_guidance.py --show-page-text
+python scripts\validate_ea_guidance_ci.py
+python -m pytest -q tests\test_guidance_streamlit_acceptance.py
+```
+
+Validate the six-rule POC release without starting Streamlit (one line in cmd):
+
+```bat
+python scripts\deploy_streamlit.py --application-version poc-v1 --expected-active-rule-ids "GROWTH-G-001,GROWTH-G-002,CUSTOMER-CV-001,CUSTOMER-CV-002,SIMPLICITY-S-001,SIMPLICITY-S-002" --warning-policy report --validate-only
+```
+
+### Useful pytest variations
+
+```bat
+python -m pytest -q
+python -m pytest -v
+python -m pytest -q tests\test_pipeline.py
+python -m pytest -q -k synthetic
+```
 
 ## First run with included sample data and model
 
@@ -141,6 +232,34 @@ CatBoost predicts `BOOKINGS_NET_PRICE_USD_AMT`. The same eligible deal is scored
 
 See [MODEL_CARD.md](MODEL_CARD.md) for performance and causal limitations.
 
+## Model comparison (different models)
+
+`different_models()` in `src/cluster_c/model_comparison.py` trains several model families on the **same** chronological train/validation/test split, features and target as the production CatBoost, then compares them:
+
+| Model | Family |
+|---|---|
+| Term × suite median | Rule-based baseline (no ML) |
+| Ridge regression on log(bookings) | Linear |
+| Random Forest, Extra Trees | Bagged trees |
+| HistGradientBoosting, XGBoost, LightGBM | Boosted trees |
+| CatBoost (current) | Production model, same settings as `model.py` |
+| CatBoost (annualized target × term) | Learns bookings ÷ term years, multiplies back |
+
+Each model is scored on:
+
+- **Accuracy** on the untouched test period: WAPE (primary), MAE, RMSE, R², MAPE, bias, share of deals within ±20%, overall and per term bucket.
+- **Stability**: expanding-window backtest inside train + validation (mean and spread of WAPE). A gap smaller than the spread is treated as noise.
+- **Three business lenses (PPT slide 3)**: the app's own `scenario.py` maths run on each model's 1/3/5-year scores at the default sliders — Growth (commitment change, NPV change, NPV breakeven), Customer value (average term; slider-driven, same for every model) and Simplicity (coverage volatility, renewal decision points). Saved as `business_lenses.csv`; on synthetic data each lens is also compared with the known true value.
+- **Scenario fitness**: every test deal is re-scored as 1, 3 and 5 years. The model must keep 1-year < 3-year < 5-year bookings for at least 95% of deals, and the page shows the what-if answer each model would give. On synthetic data the true term effect is known (+5.25% for the default scenario), so the page also shows each model's error against it.
+
+Run it:
+
+```bash
+PYTHONPATH=src python scripts/compare_models.py
+streamlit run app.py        # then open "Model Comparison" in the left sidebar
+```
+
+Results go to `data/models/model_comparison/`. This is evaluation only; the scenario page still uses the CatBoost models in `data/models/cluster_c_term_v1/`. XGBoost and LightGBM are skipped automatically if they are not installed.
 ## General EA guidance PDFs
 
 The application can apply portfolio-level EA guidance to the Growth, Customer Value, and Simplicity with Scale lenses. This is a deterministic guidance layer after scenario summarisation; it is not part of CatBoost training and does not attach documents to individual subscriptions.
@@ -276,6 +395,7 @@ The UI compares coverage volatility and renewal-decision points over five years.
 ```text
 .
 ├── app.py
+├── pages/1_Model_Comparison.py
 ├── DATA_CONTRACT.md
 ├── MODEL_CARD.md
 ├── README.md
@@ -289,11 +409,13 @@ The UI compares coverage volatility and renewal-decision points over five years.
 │   ├── generate_sample_data.py
 │   ├── prepare_data.py
 │   ├── prepare_ea_guidance.py
-│   └── train_model.py
+│   ├── train_model.py
+│   └── compare_models.py
 ├── src/cluster_c/
 │   ├── synthetic.py
 │   ├── preparation.py
 │   ├── model.py
+│   ├── model_comparison.py
 │   ├── scenario.py
 │   └── unstructured/
 └── tests/

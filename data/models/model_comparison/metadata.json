@@ -1,0 +1,44 @@
+{
+  "created_at_utc": "2026-11-10T09:32:19.708793+00:00",
+  "source_dataset_version": "cluster-c-synthetic-v1-seed42",
+  "target": "BOOKINGS_NET_PRICE_USD_AMT",
+  "target_definition": "Total committed bookings over the whole term (USD) = annualized net price \u00d7 term years",
+  "split_rows": {
+    "train": 3439,
+    "validation": 771,
+    "test": 790
+  },
+  "split_dates": {
+    "train": [
+      "2020-01-01",
+      "2024-03-17"
+    ],
+    "validation": [
+      "2024-03-20",
+      "2025-02-05"
+    ],
+    "test": [
+      "2025-02-06",
+      "2025-12-29"
+    ]
+  },
+  "primary_metric": "test_wape_pct",
+  "scenario_safe_rule": "monotonic_pct >= 95.0",
+  "backtest_folds": 3,
+  "models": [
+    "Term \u00d7 suite median (baseline)",
+    "Ridge regression (log target)",
+    "Random Forest",
+    "Extra Trees",
+    "HistGradientBoosting",
+    "XGBoost",
+    "LightGBM",
+    "CatBoost (current)",
+    "CatBoost (annualized target \u00d7 term)"
+  ],
+  "recommended_model": "CatBoost (current)",
+  "recommendation_reason": "Keep CatBoost. Ridge regression (log target) is 0.56 WAPE points better on the test period, which is smaller than CatBoost's own fold-to-fold spread (1.23 points), so the gain is not reliable. Re-run on Cisco data before switching.",
+  "current_model": "CatBoost (current)",
+  "synthetic_dataset": true,
+  "synthetic_true_default_change_pct": 5.249999999999991
+}
