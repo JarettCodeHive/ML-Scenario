@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import random
+
 import numpy as np
 import pandas as pd
 
@@ -61,11 +63,6 @@ def generate_term_deals(seed: int = RANDOM_SEED, row_count: int = 5000) -> pd.Da
         fiscal_month = (start.month - 8) % 12 + 1
         fiscal_quarter = (fiscal_month - 1) // 3 + 1
         business_entity, sub_business = SUITES[suite]
-        cx_upsell_group = str(rng.choice(CX_UPSELL_GROUP_VALUES))
-        xcat_flag = str(rng.choice(XCAT_FLAG_VALUES))
-        dv_attribution = float(rng.uniform(-100.0, 100.0))
-        if abs(dv_attribution) < 0.000001:
-            dv_attribution = 0.000001
         rows.append(
             {
                 "MONETIZATION_TYPE_CD": monetization,
@@ -87,13 +84,41 @@ def generate_term_deals(seed: int = RANDOM_SEED, row_count: int = 5000) -> pd.Da
                 "SUITE_NAME": suite,
                 "BUSINESS_ENTITY_DESCR": business_entity,
                 "SUB_BUSINESS_ENTITY_DESCR": sub_business,
-                "CX_UPSELL_GROUP": cx_upsell_group,
-                "XCAT_FLG": xcat_flag,
-                "DV_ATTRIBUTION_CD": round(dv_attribution, 6),
                 "DATASET_VERSION": SOURCE_DATASET_VERSION,
             }
         )
-    return pd.DataFrame(rows).sort_values("SUBSCRIPTION_REFERENCE_ID").reset_index(drop=True)
+    frame = pd.DataFrame(rows).sort_values("SUBSCRIPTION_REFERENCE_ID").reset_index(drop=True)
+    _add_additional_source_columns(frame, seed)
+    return frame
+
+
+def _add_additional_source_columns(frame: pd.DataFrame, seed: int) -> None:
+    """Add CX_UPSELL_GROUP, XCAT_FLG and DV_ATTRIBUTION_CD to every deal.
+
+    Uses exactly the same method as ``scripts/enrich_input_attributes.py``
+    (Python ``random.Random(seed)``, one draw sequence per row, rows in
+    SUBSCRIPTION_REFERENCE_ID order), so generating the sample here and
+    enriching an existing 20-column file with that script give identical values.
+
+    These columns use their OWN random stream, separate from the main deal
+    generator above. Drawing them inside the main loop would shift every later
+    random draw and silently change all existing deals (customers, terms,
+    bookings), which would no longer match the committed sample and models.
+    """
+    rng = random.Random(seed)
+    cx_upsell_groups, xcat_flags, attributions = [], [], []
+    for _ in range(len(frame)):
+        # Same draw order as enrich_input_attributes._generated_values():
+        # attribution first, then CX_UPSELL_GROUP, then XCAT_FLG.
+        attribution = rng.uniform(-100.0, 100.0)
+        if abs(attribution) < 0.000001:
+            attribution = 0.000001
+        cx_upsell_groups.append(rng.choice(CX_UPSELL_GROUP_VALUES))
+        xcat_flags.append(rng.choice(XCAT_FLAG_VALUES))
+        attributions.append(round(attribution, 6))
+    frame["CX_UPSELL_GROUP"] = cx_upsell_groups
+    frame["XCAT_FLG"] = xcat_flags
+    frame["DV_ATTRIBUTION_CD"] = attributions
 
 
 def write_term_deals(frame: pd.DataFrame, path=INPUT_PATH) -> None:

@@ -37,6 +37,95 @@ The supplied CSV does not contain renewal, churn, acceptance, invoice, or operat
 
 Everything runs locally. No credentials, Snowflake connection, LLM, or cloud model API is used.
 
+## Windows Command Prompt (cmd) commands
+
+The command blocks further down use macOS/Linux (bash) syntax. On Windows, run the
+equivalents below in **Command Prompt** (in VS Code: **Terminal → New Terminal**; the
+prompt looks like `C:\...>`, not `PS C:\...>`). Run every command from the project
+folder that contains `app.py`.
+
+| bash (macOS / Linux) | Windows Command Prompt |
+|---|---|
+| `python3 -m venv .venv` | `python -m venv .venv` |
+| `source .venv/bin/activate` | `.venv\Scripts\activate` |
+| `export PYTHONPATH=src` or `PYTHONPATH=src python ...` | `set PYTHONPATH=src` (once per terminal), then `python ...` |
+| `export SOURCE_DATASET_VERSION="..."` | `set SOURCE_DATASET_VERSION=...` (no quotes) |
+| `export TRAINING_SAMPLE_ROWS=500000` | `set TRAINING_SAMPLE_ROWS=500000` |
+| `scripts/name.py` | `scripts\name.py` |
+| `\` at the end of a line (continue the command) | `^` |
+
+`set` values last only for the current terminal window. In a new terminal, run
+`.venv\Scripts\activate` and `set PYTHONPATH=src` again. If you see
+`ModuleNotFoundError: No module named 'cluster_c'`, `PYTHONPATH` is not set.
+
+### One-time setup
+
+```bat
+python -m venv .venv
+.venv\Scripts\activate
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+### Every new terminal
+
+```bat
+.venv\Scripts\activate
+set PYTHONPATH=src
+```
+
+### Run the full workflow
+
+```bat
+python scripts\generate_sample_data.py
+python scripts\prepare_data.py
+python scripts\train_model.py
+python scripts\prepare_ea_guidance.py
+python -m pytest -q
+streamlit run app.py
+```
+
+`generate_sample_data.py` is only needed to rebuild the synthetic sample
+(`data\input\term_deals.csv`); skip it when using a real data extract.
+
+### Use a new data extract
+
+```bat
+set SOURCE_DATASET_VERSION=cisco-cluster-c-20261030-v1
+python scripts\prepare_data.py
+python scripts\train_model.py
+python -m pytest -q
+streamlit run app.py
+```
+
+Optional training sample cap: `set TRAINING_SAMPLE_ROWS=500000` or `set TRAINING_SAMPLE_ROWS=all`.
+
+### EA guidance PDFs
+
+```bat
+python scripts\generate_sample_ea_guidance.py
+python scripts\prepare_ea_guidance.py
+python scripts\inspect_ea_guidance.py
+python scripts\inspect_ea_guidance.py --show-page-text
+python scripts\validate_ea_guidance_ci.py
+python -m pytest -q tests\test_guidance_streamlit_acceptance.py
+```
+
+Validate the six-rule POC release without starting Streamlit (one line in cmd):
+
+```bat
+python scripts\deploy_streamlit.py --application-version poc-v1 --expected-active-rule-ids "GROWTH-G-001,GROWTH-G-002,CUSTOMER-CV-001,CUSTOMER-CV-002,SIMPLICITY-S-001,SIMPLICITY-S-002" --warning-policy report --validate-only
+```
+
+### Useful pytest variations
+
+```bat
+python -m pytest -q
+python -m pytest -v
+python -m pytest -q tests\test_pipeline.py
+python -m pytest -q -k synthetic
+```
+
 ## First run with included sample data and model
 
 ```bash
