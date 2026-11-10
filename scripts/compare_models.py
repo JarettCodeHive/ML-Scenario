@@ -11,19 +11,23 @@ import time
 
 import pandas as pd
 
-from cluster_c.config import PREPARED_DIR
+from cluster_c.config import PREPARED_FEATURE_PATH
 from cluster_c.model_comparison import different_models, save_comparison
 
-FEATURE_PATH = PREPARED_DIR / "term_model_features.csv"
+FEATURE_PATH = PREPARED_FEATURE_PATH
 LOGGER = logging.getLogger("compare_models")
 
 
 def main() -> None:
     started = time.perf_counter()
-    frame = pd.read_csv(FEATURE_PATH, parse_dates=["TERM_START_DATE", "TERM_END_DATE"], low_memory=False)
+    # 1. Load the prepared features (the output of scripts/prepare_data.py).
+    frame = pd.read_parquet(FEATURE_PATH, engine="pyarrow")
     LOGGER.info("Loaded %s rows from %s", f"{len(frame):,}", FEATURE_PATH)
+    # 2. Train and evaluate every model (about 1-2 minutes; see model_comparison.py).
     result = different_models(frame)
+    # 3. Save the result tables so the Streamlit "Model Comparison" page can show them.
     paths = save_comparison(result)
+    # 4. Print a short leaderboard and the recommendation to the terminal.
     columns = ["rank", "model", "test_wape_pct", "test_mae", "test_r2", "test_within_20pct",
                "backtest_wape_mean", "backtest_wape_std", "monotonic_pct", "scenario_safe", "fit_seconds"]
     LOGGER.info("Leaderboard (sorted by test WAPE, lower is better):\n%s",

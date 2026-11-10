@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from streamlit.testing.v1 import AppTest
 
-from cluster_c.config import PREPARED_DIR
+from cluster_c.config import PREPARED_FEATURE_PATH
 from cluster_c.model_comparison import (
     BASELINE_MODEL,
     CURRENT_MODEL,
@@ -16,7 +16,7 @@ from cluster_c.model_comparison import (
 
 
 def _frame() -> pd.DataFrame:
-    return pd.read_csv(PREPARED_DIR / "term_model_features.csv", parse_dates=["TERM_START_DATE", "TERM_END_DATE"])
+    return pd.read_parquet(PREPARED_FEATURE_PATH, engine="pyarrow")
 
 
 def test_regression_metrics_on_known_values() -> None:

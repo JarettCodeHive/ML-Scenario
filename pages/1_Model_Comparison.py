@@ -34,7 +34,7 @@ st.set_page_config(page_title="Model Comparison · Cluster C", page_icon="📊",
 # Categorical slots (fixed order): 1 blue, 2 orange, 3 aqua. Others are muted gray.
 BLUE, ORANGE, AQUA, GRAY = "#2a78d6", "#eb6834", "#1baf7a", "#9a9a94"
 TERM_COLORS = {"1 Year": BLUE, "3 Year": ORANGE, "5 Year": AQUA}
-FEATURE_PATH = ROOT / "data/prepared/term_model_features.csv"
+FEATURE_PATH = ROOT / "data/prepared/term_model_features.parquet"
 
 
 def bar_colors(models: pd.Series, recommended: str) -> list[str]:
@@ -60,10 +60,10 @@ st.caption("Which model should predict bookings for the term-flexibility what-if
 
 with st.sidebar:
     st.subheader("Re-run comparison")
-    st.caption("Trains every model again on data/prepared/term_model_features.csv (about 1–2 minutes).")
+    st.caption("Trains every model again on data/prepared/term_model_features.parquet (about 1–2 minutes).")
     folds = st.number_input("Backtest folds", 0, 6, 3, help="Expanding-window folds inside train + validation. 0 = skip.")
     if st.button("Run comparison now", type="primary"):
-        frame = pd.read_csv(FEATURE_PATH, parse_dates=["TERM_START_DATE", "TERM_END_DATE"], low_memory=False)
+        frame = pd.read_parquet(FEATURE_PATH, engine="pyarrow")
         with st.status("Training models…", expanded=True) as status:
             result = different_models(frame, n_backtest_folds=int(folds), progress=status.write)
             save_comparison(result)

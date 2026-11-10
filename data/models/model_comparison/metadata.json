@@ -1,5 +1,5 @@
 {
-  "created_at_utc": "2026-11-05T06:42:14.073417+00:00",
+  "created_at_utc": "2026-11-10T09:32:19.708793+00:00",
   "source_dataset_version": "cluster-c-synthetic-v1-seed42",
   "target": "BOOKINGS_NET_PRICE_USD_AMT",
   "target_definition": "Total committed bookings over the whole term (USD) = annualized net price \u00d7 term years",
@@ -37,7 +37,7 @@
     "CatBoost (annualized target \u00d7 term)"
   ],
   "recommended_model": "CatBoost (current)",
-  "recommendation_reason": "Keep CatBoost. Ridge regression (log target) is 0.83 WAPE points better on the test period, which is smaller than CatBoost's own fold-to-fold spread (1.59 points), so the gain is not reliable. Re-run on Cisco data before switching.",
+  "recommendation_reason": "Keep CatBoost. Ridge regression (log target) is 0.56 WAPE points better on the test period, which is smaller than CatBoost's own fold-to-fold spread (1.23 points), so the gain is not reliable. Re-run on Cisco data before switching.",
   "current_model": "CatBoost (current)",
   "synthetic_dataset": true,
   "synthetic_true_default_change_pct": 5.249999999999991
