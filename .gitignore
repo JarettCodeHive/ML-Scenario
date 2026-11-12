@@ -34,3 +34,6 @@ data/unstructured/prepared/*
 
 # Generated structured-data feature artifacts
 data/prepared/
+
+# Model comparisons on generated large datasets (python scripts/compare_models.py --rows N)
+data/models/model_comparison_*_rows/

@@ -20,6 +20,10 @@ Prepared model features are stored as Snappy-compressed Parquet rather than CSV.
 
 Prepared fiscal fields, term fields, and customer-history counts use compact nullable integer types; categorical model inputs are dictionary encoded; and derived history averages use `float32`. Raw bookings and annualized financial values remain `float64` in prepared storage. Numeric feature matrices and training labels are converted to `float32` only at the CatBoost boundary to reduce Pool memory.
 
+Since model v2 (`cluster-c-term-catboost-v2-annual-target`), both CatBoost models are trained on the annual value, `BOOKINGS_NET_PRICE_USD_AMT` ÷ term years, and every prediction is multiplied back by the term years. Total bookings equal annual value × term years, so this rule is exact; the model only has to learn how the yearly value changes with the term. Rows with a missing or unsupported `TERM_BUCKET` are excluded from training. Saved models without `target_transform` in `metadata.json` are treated as the earlier total-bookings models and are not rescaled.
+
+On the 5,000-row synthetic sample with the optimised CatBoost settings, this moved the default what-if (100% flexible, 50% five-year) from +1.52% to +4.18% commitment and from −3.38% to −0.76% NPV, against a known synthetic truth of +5.25% and +0.16%, with test WAPE 15.21% → 15.10% and unchanged training time. On a 50,000-row synthetic check: +4.07% → +5.36% commitment, −0.92% → +0.28% NPV, WAPE 9.19% → 9.06%.
+
 For each eligible row, the engine holds non-term fields fixed and predicts bookings three times:
 
 ```text

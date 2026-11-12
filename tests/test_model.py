@@ -216,3 +216,56 @@ def test_training_metadata_records_sampling() -> None:
     assert sampling["source_training_rows"] > sampling["sampled_training_rows"]
     assert sampling["sampled_training_rows"] == 100
     assert sampling["strata"] == TRAINING_SAMPLE_STRATA
+
+
+def test_models_learn_annual_value_and_multiply_back_by_term(tmp_path) -> None:
+    """Saved models predict bookings / term years; predict_term_options multiplies by 1, 3, 5."""
+    from cluster_c.model import TARGET_TRANSFORM, load_models, saved_target_transform
+
+    frame = prepare(generate_term_deals(row_count=500)).frame
+    result = train_models(frame, config=TrainingConfig(iterations=20, depth=3, early_stopping_rounds=5))
+    save_result(result, tmp_path)
+    assert result.metadata["target_transform"] == TARGET_TRANSFORM
+    assert saved_target_transform(tmp_path) == TARGET_TRANSFORM
+
+    sample = frame.head(5)
+    point, _ = load_models(tmp_path)
+    predictions = predict_term_options(sample, tmp_path)
+    values = matrix(sample)
+    for years in (1, 3, 5):
+        values["TERM_BUCKET"] = f"{years} Year"
+        annual = np.clip(point.predict(values), 0, None)
+        np.testing.assert_allclose(predictions[f"bookings_{years}y"], annual * years, rtol=1e-6)
+
+
+def test_models_saved_without_target_transform_are_not_multiplied(tmp_path) -> None:
+    """Older saved models predicted total bookings, so they must not be scaled by term years."""
+    import json
+
+    from cluster_c.model import load_models
+
+    frame = prepare(generate_term_deals(row_count=500)).frame
+    result = train_models(frame, config=TrainingConfig(iterations=20, depth=3, early_stopping_rounds=5))
+    paths = save_result(result, tmp_path)
+    metadata = json.loads(paths["metadata"].read_text(encoding="utf-8"))
+    metadata.pop("target_transform")
+    paths["metadata"].write_text(json.dumps(metadata), encoding="utf-8")
+
+    sample = frame.head(5)
+    point, _ = load_models(tmp_path)
+    predictions = predict_term_options(sample, tmp_path)
+    values = matrix(sample)
+    values["TERM_BUCKET"] = "5 Year"
+    np.testing.assert_allclose(predictions["bookings_5y"], np.clip(point.predict(values), 0, None), rtol=1e-6)
+
+
+def test_training_excludes_rows_with_unsupported_term_bucket() -> None:
+    frame = pd.DataFrame({
+        "BOOKINGS_NET_PRICE_USD_AMT": [100.0, 200.0, 300.0, 400.0],
+        "TERM_BUCKET": ["1 Year", None, "2 Year", "5 Year"],
+        "row_id": [1, 2, 3, 4],
+    })
+
+    eligible = training_eligible_frame(frame)
+
+    assert eligible["row_id"].tolist() == [1, 4]
