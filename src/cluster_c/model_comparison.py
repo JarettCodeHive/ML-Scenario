@@ -321,13 +321,15 @@ class _Baseline:
 class _CatBoost:
     """Same CatBoost settings as model.py, so 'CatBoost (current)' matches production.
 
-    annualized_target=True is a variant: instead of learning total bookings,
-    it learns bookings / term years (the ANNUAL value) and multiplies back by
-    the term at prediction time. Because total = annual x years exactly, this
-    builds that rule into the model instead of making it learn it.
+    annualized_target=True (production since model v2): the model learns
+    bookings / term years (the ANNUAL value) and multiplies back by the term at
+    prediction time. Because total = annual x years exactly, this builds that
+    rule into the model instead of making it learn it.
+    annualized_target=False is the previous production setup (learns total
+    bookings directly), kept so the comparison shows before vs after.
     """
 
-    def __init__(self, annualized_target: bool = False, config: TrainingConfig = TrainingConfig()):
+    def __init__(self, annualized_target: bool = True, config: TrainingConfig = TrainingConfig()):
         self.annualized_target = annualized_target
         self.config = config                      # depth, learning rate, etc. from model.py
         self.best_iteration: int | None = None    # set by early stopping; reused in backtest folds
@@ -347,7 +349,9 @@ class _CatBoost:
         self.model = CatBoostRegressor(
             iterations=iterations, depth=cfg.depth, learning_rate=cfg.learning_rate,
             l2_leaf_reg=cfg.l2_leaf_reg, loss_function="MAE", random_seed=cfg.random_seed,
-            allow_writing_files=False, thread_count=1, verbose=False,
+            allow_writing_files=False, thread_count=cfg.thread_count, verbose=False,
+            # Same category-combination limits as production (model._new_model).
+            max_ctr_complexity=cfg.max_ctr_complexity, ctr_leaf_count_limit=cfg.ctr_leaf_count_limit,
         )
         # Pool = CatBoost's data container; cat_features tells it which columns are text.
         pool = Pool(matrix(train), label=self._label(train), cat_features=CATEGORICAL_FEATURES)
@@ -522,11 +526,15 @@ def model_catalogue() -> list[ModelSpec]:
     if _available("lightgbm"):
         specs.append(ModelSpec("LightGBM", "Boosted trees", "Leaf-wise gradient boosting with L1 objective and native categoricals.", _LightGBM, True))
     if _available("catboost"):
-        specs.append(ModelSpec(CURRENT_MODEL, "Boosted trees", "The pipeline's production model: CatBoost, MAE loss, same settings as model.py.", _CatBoost, True))
         specs.append(ModelSpec(
-            "CatBoost (annualized target × term)", "Boosted trees",
-            "Same CatBoost, but learns bookings ÷ term years (the annual value) and multiplies back by term years.",
+            CURRENT_MODEL, "Boosted trees",
+            "The pipeline's production model: CatBoost with model.py's settings, learning the annual value (bookings ÷ term years) and multiplying back by the term.",
             lambda: _CatBoost(annualized_target=True), True,
+        ))
+        specs.append(ModelSpec(
+            "CatBoost (total-bookings target)", "Boosted trees",
+            "The previous production setup: same CatBoost settings, but learning total bookings directly.",
+            lambda: _CatBoost(annualized_target=False), True,
         ))
     return specs
 

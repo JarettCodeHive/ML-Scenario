@@ -224,7 +224,7 @@ Random seed 42 produces the same sample each time.
 
 ## What the model does
 
-CatBoost predicts `BOOKINGS_NET_PRICE_USD_AMT`. The same eligible deal is scored under `1 Year`, `3 Year`, and `5 Year` while other fields remain fixed. The scenario then mixes those estimates according to:
+CatBoost predicts `BOOKINGS_NET_PRICE_USD_AMT`. Since model v2 it learns the annual value (`BOOKINGS_NET_PRICE_USD_AMT` ÷ term years) and multiplies each prediction back by 1, 3 or 5, so the exact "total = annual value × years" rule is built in and the model focuses on how the yearly value changes with the term. The same eligible deal is scored under `1 Year`, `3 Year`, and `5 Year` while other fields remain fixed. The scenario then mixes those estimates according to:
 
 - Percentage of deals using flexible terms
 - One-year versus five-year share
@@ -242,8 +242,8 @@ See [MODEL_CARD.md](MODEL_CARD.md) for performance and causal limitations.
 | Ridge regression on log(bookings) | Linear |
 | Random Forest, Extra Trees | Bagged trees |
 | HistGradientBoosting, XGBoost, LightGBM | Boosted trees |
-| CatBoost (current) | Production model, same settings as `model.py` |
-| CatBoost (annualized target × term) | Learns bookings ÷ term years, multiplies back |
+| CatBoost (current) | Production model: same settings as `model.py`, learns bookings ÷ term years and multiplies back |
+| CatBoost (total-bookings target) | Previous production setup: same settings, learns total bookings directly |
 
 Each model is scored on:
 

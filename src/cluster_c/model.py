@@ -20,7 +20,13 @@ from catboost import CatBoostRegressor, Pool
 from .config import MODEL_DIR, RANDOM_SEED, SOURCE_DATASET_VERSION
 from .preparation import CATEGORICAL_FEATURES, EXCLUDED_IDENTIFIER_FEATURES, FEATURES, TARGET
 
-MODEL_VERSION = "cluster-c-term-catboost-v1"
+MODEL_VERSION = "cluster-c-term-catboost-v2-annual-target"
+# The models learn the ANNUAL value (bookings / term years); predictions are
+# multiplied back by 1, 3 or 5. Total bookings equal annual value x term years,
+# so building that rule in lets the model spend its capacity on how the yearly
+# value itself changes with the term, which is the effect the what-if measures.
+TARGET_TRANSFORM = "annual_value_x_term_years"
+TERM_YEARS = {"1 Year": 1.0, "3 Year": 3.0, "5 Year": 5.0}
 LOGGER = logging.getLogger(__name__)
 TRAINING_COLUMNS = list(dict.fromkeys(
     FEATURES + [TARGET, "TERM_START_DATE", "SUBSCRIPTION_REFERENCE_ID", "CAV_END_CUSTOMER_BU_ID"]
@@ -103,6 +109,19 @@ class TrainingResult:
     metadata: dict[str, Any]
 
 
+def term_years(term_bucket) -> np.ndarray:
+    """'1 Year' / '3 Year' / '5 Year' -> 1.0 / 3.0 / 5.0 (works for text or category columns)."""
+    years = pd.Series(term_bucket).astype("string").map(TERM_YEARS).astype(float).to_numpy()
+    if np.isnan(years).any():
+        raise ValueError("TERM_BUCKET must be one of '1 Year', '3 Year' or '5 Year'")
+    return years
+
+
+def annual_label(frame: pd.DataFrame) -> pd.Series:
+    """Training label: total bookings divided by the deal's term years."""
+    return (pd.to_numeric(frame[TARGET], errors="coerce").to_numpy(float) / term_years(frame["TERM_BUCKET"])).astype("float32")
+
+
 def matrix(frame: pd.DataFrame) -> pd.DataFrame:
     # Build the model matrix directly from transformed Series. This avoids an
     # intermediate deep copy of every feature before the conversions below.
@@ -128,6 +147,16 @@ def training_eligible_frame(frame: pd.DataFrame) -> pd.DataFrame:
             f"{excluded_rows:,}",
             TARGET,
         )
+    if "TERM_BUCKET" in frame.columns:
+        # The annual-value label divides by term years, so the term must be 1, 3 or 5 years.
+        valid_term = frame["TERM_BUCKET"].astype("string").isin(list(TERM_YEARS)).fillna(False).astype(bool)
+        excluded_terms = int((valid_target & ~valid_term).sum())
+        if excluded_terms:
+            LOGGER.warning(
+                "Excluding %s rows with a null or unsupported TERM_BUCKET from model training",
+                f"{excluded_terms:,}",
+            )
+        valid_target = valid_target & valid_term
     eligible = frame.loc[valid_target]
     if eligible.empty:
         raise ValueError(f"No rows have a valid finite {TARGET} target")
@@ -344,7 +373,7 @@ def train_models(
     pools = {
         name: Pool(
             matrix(splits[name]),
-            label=splits[name][TARGET].astype("float32"),
+            label=annual_label(splits[name]),
             cat_features=CATEGORICAL_FEATURES,
             feature_names=FEATURES,
         )
@@ -375,12 +404,14 @@ def train_models(
         part = splits[split_name]
         actual = part[TARGET].to_numpy(float)
         values = matrix(part)
-        central = np.clip(point.predict(values), 0, None)
+        # Annual-value predictions x term years = total bookings (same unit as the target).
+        years = term_years(part["TERM_BUCKET"])
+        central = np.clip(point.predict(values), 0, None) * years
         interval_raw = np.clip(interval.predict(values), 0, None)
         if interval_raw.ndim != 2 or interval_raw.shape[1] != 2:
             raise ValueError(f"Expected MultiQuantile predictions with shape (rows, 2); received {interval_raw.shape}")
-        low_raw = interval_raw[:, 0]
-        high_raw = interval_raw[:, 1]
+        low_raw = interval_raw[:, 0] * years
+        high_raw = interval_raw[:, 1] * years
         low = np.minimum.reduce([low_raw, central, high_raw])
         high = np.maximum.reduce([low_raw, central, high_raw])
         baseline = np.array([
@@ -422,6 +453,8 @@ def train_models(
         "source_dataset_version": SOURCE_DATASET_VERSION,
         "dataset_sha256": dataset_sha256,
         "target": TARGET,
+        "target_transform": TARGET_TRANSFORM,
+        "target_transform_note": "Models predict bookings / term years; predictions are multiplied by 1, 3 or 5.",
         "model_type": "CatBoost S-learner with MAE point and MultiQuantile P10/P90 models",
         "catboost_version": catboost.__version__,
         "features": FEATURES,
@@ -486,18 +519,33 @@ def load_models(model_dir: Path = MODEL_DIR):
     return tuple(models)
 
 
+def saved_target_transform(model_dir: Path = MODEL_DIR) -> str | None:
+    """Read how the saved models were trained.
+
+    Models saved before the annual-value change have no ``target_transform`` in
+    metadata.json and predict total bookings directly, so they must NOT be
+    multiplied by the term years.
+    """
+    metadata_path = model_dir / "metadata.json"
+    if not metadata_path.exists():
+        return None
+    return json.loads(metadata_path.read_text(encoding="utf-8")).get("target_transform")
+
+
 def predict_term_options(frame: pd.DataFrame, model_dir: Path = MODEL_DIR) -> pd.DataFrame:
     point, interval = load_models(model_dir)
+    annual_models = saved_target_transform(model_dir) == TARGET_TRANSFORM
     output = frame[["SUBSCRIPTION_REFERENCE_ID"]].copy()
     values = matrix(frame)
     for years in (1, 3, 5):
         values["TERM_BUCKET"] = f"{years} Year"
-        central = np.clip(point.predict(values), 0, None)
+        scale = float(years) if annual_models else 1.0
+        central = np.clip(point.predict(values), 0, None) * scale
         interval_raw = np.clip(interval.predict(values), 0, None)
         if interval_raw.ndim != 2 or interval_raw.shape[1] != 2:
             raise ValueError(f"Expected MultiQuantile predictions with shape (rows, 2); received {interval_raw.shape}")
-        low_raw = interval_raw[:, 0]
-        high_raw = interval_raw[:, 1]
+        low_raw = interval_raw[:, 0] * scale
+        high_raw = interval_raw[:, 1] * scale
         output[f"bookings_{years}y"] = central
         output[f"bookings_{years}y_p10"] = np.minimum.reduce([low_raw, central, high_raw])
         output[f"bookings_{years}y_p90"] = np.maximum.reduce([low_raw, central, high_raw])
