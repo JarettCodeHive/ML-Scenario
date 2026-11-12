@@ -260,6 +260,42 @@ streamlit run app.py        # then open "Model Comparison" in the left sidebar
 ```
 
 Results go to `data/models/model_comparison/`. This is evaluation only; the scenario page still uses the CatBoost models in `data/models/cluster_c_term_v1/`. XGBoost and LightGBM are skipped automatically if they are not installed.
+
+### Comparing on larger synthetic datasets (`--rows`)
+
+To check whether the results hold with more data, generate a larger synthetic dataset and compare the models on it:
+
+```bash
+PYTHONPATH=src python scripts/compare_models.py --rows 50000
+PYTHONPATH=src python scripts/compare_models.py --rows 100000
+```
+
+Windows Command Prompt: run `set PYTHONPATH=src` once, then `python scripts\compare_models.py --rows 50000`.
+
+`--rows N` uses the same rule-based generator as the sample (`generate_term_deals()` in `src/cluster_c/synthetic.py`, seed 42). It builds every deal from probability rules; it does **not** use the 10-row template of `scripts/generate_large_input.py`. With the same seed, the first 5,000 generated rows are identical to the committed sample and the extra rows follow the same rules (same 700 customers, same 2020–2025 date range, same known term factors), so the known synthetic truth still applies.
+
+**Where the data and results go:**
+
+| Command | Data used | Results saved to |
+|---|---|---|
+| `compare_models.py` (no `--rows`) | The 5,000-row sample: `data/input/term_deals.csv` → `data/prepared/term_model_features.parquet` | `data/models/model_comparison/` |
+| `compare_models.py --rows 50000` | 50,000 deals generated **in memory only** | `data/models/model_comparison_50000_rows/` |
+| `compare_models.py --rows 100000` | 100,000 deals generated **in memory only** | `data/models/model_comparison_100000_rows/` |
+
+- `data/input/term_deals.csv` always stays the 5,000-row sample. `--rows` never writes to it, and `--save-data` refuses to overwrite it.
+- Each size has its own results folder, so runs never overwrite each other. Running the same size again only refreshes that folder (with identical numbers for the same seed).
+- The generated datasets are not saved unless you add `--save-data`, e.g. `--save-data data/input/term_deals_100k.csv` (a separate file, about 25 MB for 100k rows; do not commit it).
+- The `model_comparison_*_rows/` folders are listed in `.gitignore` and are not committed.
+- On the **Model Comparison** page, use the **Result set** dropdown in the sidebar to switch between the sample and each generated size.
+
+| Option | Meaning |
+|---|---|
+| `--rows N` | Number of synthetic deals to generate (at least 100) |
+| `--folds K` | Backtest folds for the stability check (default 3; `0` skips it and is about 4× faster) |
+| `--seed S` | Random seed for the generated data (default 42) |
+| `--save-data PATH` | Also save the generated raw CSV to PATH |
+
+Approximate run time with 3 folds: 50,000 rows about 3 minutes, 100,000 rows about 6 minutes.
 ## General EA guidance PDFs
 
 The application can apply portfolio-level EA guidance to the Growth, Customer Value, and Simplicity with Scale lenses. This is a deterministic guidance layer after scenario summarisation; it is not part of CatBoost training and does not attach documents to individual subscriptions.
