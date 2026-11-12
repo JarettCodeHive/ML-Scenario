@@ -49,6 +49,25 @@ because the repository already includes prepared data and trained models.
 | 3c. Compare models | `python scripts\compare_models.py` | Trains 9 models and compares accuracy, stability and the three business lenses (about 1–2 min) | `data\models\model_comparison\` |
 | 3d. Open the app | `streamlit run app.py` | Opens the browser. Main page = the what-if; sidebar **Model Comparison** = model results | — |
 
+### Compare models on a larger synthetic dataset
+
+```bat
+python scripts\compare_models.py --rows 50000
+python scripts\compare_models.py --rows 100000
+python scripts\compare_models.py --rows 100000 --folds 0
+```
+
+`--rows N` generates N synthetic deals in memory with the same generator and seed as the sample, prepares them, compares the 9 models and saves the results to `data\models\model_comparison_N_rows\`. Your sample (`data\input\term_deals.csv`) and its prepared files are not changed. In the app, choose the dataset under **Result set** in the Model Comparison sidebar.
+
+| Option | Meaning |
+|---|---|
+| `--rows N` | Number of synthetic deals to generate (at least 100) |
+| `--folds K` | Backtest folds for the stability check (default 3; `0` skips it and is about 4× faster) |
+| `--seed S` | Random seed for the generated data (default 42) |
+| `--save-data PATH` | Also save the generated raw CSV, e.g. `--save-data data\input\term_deals_100k.csv` (cannot overwrite `term_deals.csv`) |
+
+Approximate run time (9 models, 3 folds): 50,000 rows about 3 minutes, 100,000 rows about 6 minutes.
+
 On macOS/Linux use `/` instead of `\` in the paths, e.g. `python scripts/prepare_data.py`.
 
 Optional: regenerate the synthetic sample data first with `python scripts\generate_sample_data.py`.

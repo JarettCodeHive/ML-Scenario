@@ -64,3 +64,23 @@ def test_lens_check_matches_known_synthetic_truth_inputs() -> None:
     truth = synthetic_truth_lenses(frame.head(200))
     assert round(truth["growth_commitment_change_pct"], 2) == 5.25
     assert truth["customer_avg_term_years"] == 3.0
+
+
+def test_compare_models_rows_option_writes_its_own_result_folder(tmp_path, monkeypatch) -> None:
+    """--rows N generates data in memory and saves to model_comparison_N_rows, not the sample folder."""
+    import sys
+
+    import scripts.compare_models as cli
+
+    monkeypatch.setattr(cli, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(cli, "COMPARISON_DIR", tmp_path / "models" / "model_comparison")
+    monkeypatch.setattr(cli, "different_models", lambda frame, n_backtest_folds=3: different_models(
+        frame, models=[BASELINE_MODEL, "Ridge regression (log target)"], n_backtest_folds=0))
+    monkeypatch.setattr(sys, "argv", ["compare_models.py", "--rows", "1200", "--folds", "0"])
+    cli.main()
+
+    folder = tmp_path / "models" / "model_comparison_1200_rows"
+    assert (folder / "leaderboard.csv").exists()
+    assert not (tmp_path / "models" / "model_comparison").exists()
+    import json
+    assert json.loads((folder / "metadata.json").read_text(encoding="utf-8"))["source_rows"] == 1200

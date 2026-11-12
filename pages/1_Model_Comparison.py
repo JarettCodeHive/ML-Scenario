@@ -50,8 +50,23 @@ def style_fig(fig: go.Figure, height: int = 380) -> go.Figure:
 
 
 @st.cache_data
-def load_results(stamp: float):
-    return load_comparison(COMPARISON_DIR)
+def load_results(folder: str, stamp: float):
+    return load_comparison(Path(folder))
+
+
+def result_sets() -> dict[str, Path]:
+    """Every saved comparison: the prepared sample plus any `--rows N` runs."""
+    sets = {}
+    if (COMPARISON_DIR / "metadata.json").exists():
+        sets["Prepared sample (data/prepared)"] = COMPARISON_DIR
+    generated = []
+    for folder in COMPARISON_DIR.parent.glob("model_comparison_*_rows"):
+        rows = folder.name.removeprefix("model_comparison_").removesuffix("_rows")
+        if rows.isdigit() and (folder / "metadata.json").exists():
+            generated.append((int(rows), folder))
+    for rows, folder in sorted(generated):
+        sets[f"Generated {rows:,} rows"] = folder
+    return sets
 
 
 st.title("Model comparison — Cluster C bookings model")
@@ -59,8 +74,16 @@ st.caption("Which model should predict bookings for the term-flexibility what-if
            "All models use the same chronological split, features and test period as the production CatBoost.")
 
 with st.sidebar:
+    st.subheader("Result set")
+    available = result_sets()
+    chosen_set = st.selectbox(
+        "Show results for", list(available) or ["(none yet)"],
+        help="Larger synthetic datasets: python scripts\\compare_models.py --rows 100000",
+    )
+    st.caption("Add a larger dataset from the terminal: `python scripts/compare_models.py --rows 100000`")
+    st.divider()
     st.subheader("Re-run comparison")
-    st.caption("Trains every model again on data/prepared/term_model_features.parquet (about 1–2 minutes).")
+    st.caption("Trains every model again on the prepared sample, data/prepared/term_model_features.parquet (about 1–2 minutes).")
     folds = st.number_input("Backtest folds", 0, 6, 3, help="Expanding-window folds inside train + validation. 0 = skip.")
     if st.button("Run comparison now", type="primary"):
         frame = pd.read_parquet(FEATURE_PATH, engine="pyarrow")
@@ -70,13 +93,14 @@ with st.sidebar:
             status.update(label="Comparison finished", state="complete")
         st.cache_data.clear()
 
-metadata_path = COMPARISON_DIR / "metadata.json"
+selected_dir = available.get(chosen_set, COMPARISON_DIR)
+metadata_path = selected_dir / "metadata.json"
 if not metadata_path.exists():
     st.info("No comparison results yet. Click **Run comparison now** in the sidebar, or run:")
     st.code("PYTHONPATH=src python scripts/compare_models.py", language="bash")
     st.stop()
 
-res = load_results(metadata_path.stat().st_mtime)
+res = load_results(str(selected_dir), metadata_path.stat().st_mtime)
 board, meta, scenario = res.leaderboard, res.metadata, res.scenario
 recommended = meta["recommended_model"]
 best = board.sort_values("test_wape_pct").iloc[0]
@@ -97,7 +121,7 @@ with st.container(border=True):
         f"**Split** — train {meta['split_rows']['train']:,} · validation {meta['split_rows']['validation']:,} · "
         f"test {meta['split_rows']['test']:,} rows  \n"
         f"Test period: {meta['split_dates']['test'][0]} → {meta['split_dates']['test'][1]}  \n"
-        f"Dataset: `{meta['source_dataset_version']}`  \n"
+        f"Dataset: `{meta['source_dataset_version']}` · {meta.get('result_set', 'prepared sample')}  \n"
         f"Run: {meta['created_at_utc'][:16].replace('T', ' ')} UTC"
     )
 
